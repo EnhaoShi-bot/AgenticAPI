@@ -1,0 +1,130 @@
+# ========================
+# 通用 / OS & Editor
+# ========================
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDEs and editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ========================
+# 前端 (Vue / Node.js)
+# ========================
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+dist-ssr/
+
+# Local env files
+*.local
+.env.local
+.env.*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# ESLint / Prettier
+.eslintcache
+.prettiercache
+
+# Vite
+*.timestamp-*-*.mjs
+
+# Vitest
+__screenshots__/
+
+# Cypress
+/cypress/videos/
+/cypress/screenshots/
+
+# ========================
+# 后端 (Python)
+# ========================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# ========================
+# 其他
+# ========================
+
+# 临时文件
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# 上传文件 / 本地数据（如果不需要提交）
+# uploads/
+# local_data/

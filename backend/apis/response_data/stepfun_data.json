@@ -1,0 +1,23 @@
+{
+    "status": 1,
+    "desc": "",
+    "five_hour_usage_left_rate": 0,
+    "five_hour_usage_reset_time": "0",
+    "weekly_usage_left_rate": 0,
+    "weekly_usage_reset_time": "0",
+    "plan_family": 2,
+    "plan_credit_rate_limit": {
+        "subscription_credit_left_rate": 0.99941546,
+        "subscription_credit_reset_time": "1786676388",
+        "topup_credit_left_rate": 0,
+        "credit_buckets": [
+            {
+                "type": 1,
+                "credit_total": "400000000",
+                "credit_residual": "399766191",
+                "expire_at": "1815620388",
+                "next_reset_at": "1786676388"
+            }
+        ]
+    }
+}
