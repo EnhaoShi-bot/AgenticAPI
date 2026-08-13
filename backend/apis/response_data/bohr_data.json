@@ -4,7 +4,7 @@
     "expiry": "2026-08-14T23:59:59",
     "usage": {
         "afp": {
-            "used": 28837.5815,
+            "used": 28839.0414,
             "quota": 40000.0,
             "subscribe_time": 1784084079000,
             "reset_time": 1786809599000,
@@ -20,12 +20,12 @@
         "afp_daily": {
             "used": 0.0,
             "quota": 20000.0,
-            "subscribe_time": 1786377600000,
-            "reset_time": 1786464000000,
+            "subscribe_time": 1786550400000,
+            "reset_time": 1786636800000,
             "remaining": 0
         },
         "afp_weekly": {
-            "used": 3.5366,
+            "used": 4.9965,
             "quota": 14000.0,
             "subscribe_time": 1786291200000,
             "reset_time": 1786896000000,
@@ -50,21 +50,21 @@
         },
         "AFPWeekly": {
             "Quota": 14000,
-            "Used": 3.5366,
+            "Used": 4.9965,
             "SubscribeTime": 1786291200000,
             "ResetTime": 1786896000000
         },
         "AFPMonthly": {
             "Quota": 40000,
-            "Used": 28837.5815,
+            "Used": 28839.0414,
             "SubscribeTime": 1784084079000,
             "ResetTime": 1786809599000
         },
         "AFPDaily": {
             "Quota": 20000,
             "Used": 0,
-            "SubscribeTime": 1786377600000,
-            "ResetTime": 1786464000000
+            "SubscribeTime": 1786550400000,
+            "ResetTime": 1786636800000
         }
     },
     "coding_plan_usage": {
@@ -93,28 +93,12 @@
                 {
                     "count": 22,
                     "date": "2026-07-20"
-                },
-                {
-                    "count": 13,
-                    "date": "2026-07-13"
                 }
             ],
             "by_model": [
                 {
-                    "count": 5,
-                    "model": "glm-4.7"
-                },
-                {
-                    "count": 17,
-                    "model": "DeepSeek-V3.2"
-                },
-                {
-                    "count": 5,
-                    "model": "MiniMax-M2.5"
-                },
-                {
-                    "count": 2,
-                    "model": "qwen3.5-flash"
+                    "count": 13,
+                    "model": "deepseek-v3.2"
                 },
                 {
                     "count": 1,
@@ -135,6 +119,18 @@
                 {
                     "count": 6,
                     "model": "qwen3-coder-plus"
+                },
+                {
+                    "count": 1,
+                    "model": "qwen3.5-flash"
+                },
+                {
+                    "count": 1,
+                    "model": "glm-4.7"
+                },
+                {
+                    "count": 1,
+                    "model": "MiniMax-M2.5"
                 },
                 {
                     "count": 1,
@@ -181,11 +177,11 @@
                     "model": "doubao-seed-2.0-mini"
                 }
             ],
-            "total": 109
+            "total": 96
         },
         "period": {
-            "from": "2026-07-12",
-            "to": "2026-08-11"
+            "from": "2026-07-14",
+            "to": "2026-08-13"
         },
         "skill": {
             "by_skill": [],
@@ -205,14 +201,14 @@
             "month": {
                 "limit": 18000,
                 "next_reset": "2027-06-15T06:37:40+08:00",
-                "remaining": 17891,
-                "used": 109
+                "remaining": 17904,
+                "used": 96
             },
             "week": {
                 "limit": 9000,
                 "next_reset": "2026-08-17T00:00:00+08:00",
-                "remaining": 8981,
-                "used": 19
+                "remaining": 8991,
+                "used": 9
             }
         },
         "skill": {

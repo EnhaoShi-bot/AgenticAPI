@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import {ref, watch} from 'vue'
+import {ref, watch, onMounted} from 'vue'
 import {useRoute} from 'vue-router'
 import logoImage from '../public/example.jpg'
+import {useModelListStore} from '@/store/modelList'
+
 
 // 导航栏数据
 const navItems = [
@@ -29,8 +31,15 @@ const updateActiveIndex = () => {
 }
 watch(() => route.path, updateActiveIndex, {immediate: true})
 
-
 const activeIndex = ref(0)
+
+// 挂载的时候，加载模型列表，这样不管用户从哪个页面进入，都能看到最新的模型列表
+const modelListStore = useModelListStore()
+onMounted(() => {
+  modelListStore.loadTotalModels()
+})
+
+
 </script>
 
 

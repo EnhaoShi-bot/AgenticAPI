@@ -103,7 +103,7 @@
     <!-- 数据展示区域 -->
     <div class="data-sections">
       <!-- 火山方舟 Agent Plan -->
-      <el-card v-if="settings.brmToken" class="plan-card" shadow="hover">
+      <el-card class="plan-card" shadow="hover">
         <template #header>
           <div class="card-header">
             <span>火山方舟 Agent Plan</span>
@@ -138,7 +138,7 @@
       </el-card>
 
       <!-- 深势科技 Coding Plan -->
-      <el-card v-if="settings.brmToken" class="plan-card" shadow="hover">
+      <el-card class="plan-card" shadow="hover">
         <template #header>
           <div class="card-header">
             <span>深势科技 Coding Plan</span>
@@ -173,7 +173,7 @@
       </el-card>
 
       <!-- 阶跃星辰 Step Plan -->
-      <el-card v-if="settings.stepToken" class="plan-card" shadow="hover">
+      <el-card class="plan-card" shadow="hover">
         <template #header>
           <div class="card-header">
             <span>阶跃星辰 Step Plan</span>
@@ -208,7 +208,7 @@
       </el-card>
 
       <!-- 阿里云百炼 Token Plan -->
-      <el-card v-if="settings.aliyunCookie" class="plan-card" shadow="hover">
+      <el-card class="plan-card" shadow="hover">
         <template #header>
           <div class="card-header">
             <span>阿里云百炼 Token Plan</span>

@@ -63,11 +63,6 @@ class PageResult(BaseModel):
 
 
 # 定义获取模型总括情况的数据类型
-class ModelListInfo(BaseModel):
-    models: list
-    modelNumber: int
-    freeModelNumber: int
-
 
 @router.get("/get")
 def get_models(
@@ -76,76 +71,12 @@ def get_models(
     """
     获取全量模型列表
     :param db: 数据库会话
-    :param model_name: 模型名称（可选），为空时返回全部
     """
     models = db.execute(
         text("SELECT * FROM llm_models")
     ).mappings().all()
 
-    freeModelNumber = 0
-    for model in models:
-        if model.model_group == "free":
-            freeModelNumber += 1
-
-    return ModelListInfo(
-        models=[ModelSchema(**dict(model)).model_dump(by_alias=True, mode="json") for model in models],
-        modelNumber=len(models),
-        freeModelNumber=freeModelNumber
-    )
-
-
-@router.get("/page")
-def get_models_page(
-        pageNum: int = 1,
-        pageSize: int = 10,
-        modelName: str = "",
-        db: Session = Depends(get_db)
-):
-    """
-    分页获取模型列表
-    :param pageNum: 页码，从 1 开始，默认 1
-    :param pageSize: 每页条数，默认 10
-    :param modelName: 模型名称（可选），支持模糊匹配
-    :param db: 数据库会话
-    """
-    # 参数校验
-    if pageNum < 1:
-        raise HTTPException(status_code=400, detail="pageNum 不能小于 1")
-    if pageSize < 1:
-        raise HTTPException(status_code=400, detail="pageSize 不能小于 1")
-
-    # 构建 WHERE 条件
-    where_clause = ""
-    params = {}
-    if modelName and modelName.strip():
-        where_clause = "WHERE name LIKE :name"
-        params["name"] = f"%{modelName.strip()}%"
-
-    # 查询总记录数
-    count_sql = text(f"SELECT COUNT(*) as total FROM llm_models {where_clause}")
-    total_result = db.execute(count_sql, params).mappings().first()
-    modelNumber = total_result["total"] if total_result else 0
-
-    # 查询当前页数据
-    offset = (pageNum - 1) * pageSize
-    data_sql = text(
-        f"SELECT * FROM llm_models {where_clause} LIMIT :limit OFFSET :offset"
-    )
-    models = db.execute(
-        data_sql,
-        {**params, "limit": pageSize, "offset": offset}
-    ).mappings().all()
-
-    # 返回当前页码
-    pages = (modelNumber + pageSize - 1) // pageSize if pageSize > 0 else 0
-
-    return PageResult(
-        list=[ModelSchema(**dict(model)).model_dump(by_alias=True, mode="json") for model in models],
-        modelNumber=modelNumber,
-        pageNum=pageNum,
-        pageSize=pageSize,
-        pages=pages
-    )
+    return [ModelSchema(**dict(model)).model_dump(by_alias=True, mode="json") for model in models]
 
 
 @router.post("/post")

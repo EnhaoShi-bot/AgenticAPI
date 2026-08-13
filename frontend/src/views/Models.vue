@@ -5,25 +5,25 @@
     <!-- 【页面顶部】标题、描述、搜索框 -->
     <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
       <h1 style="margin: 0;">模型广场</h1>
-      <p style="margin: 0;">本站已启用{{ modelStatistics.totalModelNumber }}个模型，含{{
-          modelStatistics.freeModelNumber
+      <p style="margin: 0;">本站已启用{{ totalModelNumber }}个模型，含{{
+          freeModelNumber
         }}个免费模型</p>
       <div style="display: flex; gap: 8px;">
         <input
             style="width: 300px;"
             v-model="pageInfo.currentModelName"
             placeholder="输入模型名称"
-            @input="loadPageModels"
+            @input="pageInfo.currentPageNum = 1"
         />
-        <button @click="loadPageModels">搜索</button>
-        <button @click="pageInfo.currentModelName = ''; loadPageModels()">清除</button>
+        <button @click="pageInfo.currentPageNum = 1">搜索</button>
+        <button @click="pageInfo.currentModelName = ''; pageInfo.currentPageNum = 1;">清除</button>
       </div>
     </div>
 
     <!-- 【页面主体】模型列表 -->
     <div class="model-list">
       <!-- 【模型列表】每一张模型卡片 -->
-      <div v-for="model in pageInfo.pageModelList" :key="model.id" class="model-item">
+      <div v-for="model in currentPageModels" :key="model.id" class="model-item">
         <div>
           <strong style="font-size: 20px;">{{ model.name }}</strong>
           <!-- 复制按钮 -->
@@ -180,13 +180,11 @@
       <el-pagination
           v-model:current-page="pageInfo.currentPageNum"
           v-model:page-size="pageInfo.currentPageSize"
-          :total="pageInfo.currentModelNumber"
+          :total="filteredModelNumber"
           :page-sizes="[12, 16, 20, 24]"
           size="small"
           :background="true"
           layout='total, sizes, prev, pager, next, jumper'
-          @size-change="loadPageModels"
-          @current-change="loadPageModels"
       />
     </div>
 
@@ -195,10 +193,18 @@
 
 <script setup lang="ts">
 
-import {onMounted, reactive, ref} from 'vue'
+import {reactive, ref, computed} from 'vue'
 import {ElMessage} from 'element-plus'
-import type {modelInfoSchema} from '@/interferences/interference'
 import axios from "axios";
+import {useModelListStore} from '@/store/modelList'
+import {storeToRefs} from 'pinia'
+
+/** ═══════════ 从pinia中获取全量的模型状态 ═══════════ */
+// 这里的useModelListStore()会返回一个对象，对象中包含了totalModelNumber和freeModelNumber两个属性
+// 这里用storeToRefs()来将对象转换为响应式数据
+// 相比toRefs()，这里只对useModelListStore()这个对象的数据进行响应式处理，而不会对其中的actions等进行响应式处理
+const modelList = useModelListStore()
+const {totalModelList,totalModelNumber,freeModelNumber} = storeToRefs(modelList)
 
 /** ═══════════ 模型广场相关 ═══════════ */
 
@@ -206,52 +212,31 @@ import axios from "axios";
 const pageInfo = reactive({
   currentPageNum: 1,
   currentPageSize: 12,
-  currentModelName: "",
-  currentModelNumber: 0,
-  pageModelList: [] as modelInfoSchema[],
-})
-
-// 所有模型的相关统计信息
-const modelStatistics = reactive({
-  totalModelList: [] as modelInfoSchema[],
-  totalModelNumber: 0,
-  freeModelNumber: 0
+  currentModelName: ""
 })
 
 
-// 使用axios获取当前页的模型列表
-const loadPageModels = () => {
-  axios.get("api/models/page", {
-        params: {
-          pageNum: pageInfo.currentPageNum,
-          pageSize: pageInfo.currentPageSize,
-          modelName: pageInfo.currentModelName,
-        }
-      }
-  ).then(
-      res => {
-        pageInfo.pageModelList = res.data.list
-        pageInfo.currentModelNumber = res.data.modelNumber
-      }
+// 根据搜索关键字过滤后的模型列表
+const filteredModelList = computed(() => {
+  const keyword = pageInfo.currentModelName.trim().toLowerCase()
+  if (!keyword) {
+    return totalModelList.value
+  }
+  return totalModelList.value.filter(model =>
+    model.name.toLowerCase().includes(keyword)
   )
-}
-
-// 获取所有的模型列表，及其统计信息
-const loadTotalModels = () => {
-  axios.get("api/models/get").then(
-      res => {
-        modelStatistics.totalModelNumber = res.data.modelNumber
-        modelStatistics.freeModelNumber = res.data.freeModelNumber
-      }
-  )
-}
-
-
-onMounted(() => {
-  // 页面刚出来就刷新一下
-  loadPageModels()
-  loadTotalModels()
 })
+
+// 当前页的模型数量（过滤后的总数）
+const filteredModelNumber = computed(() => filteredModelList.value.length)
+
+// 当前页的模型列表（分页切片）
+const currentPageModels = computed(() => {
+  const start = (pageInfo.currentPageNum - 1) * pageInfo.currentPageSize
+  const end = start + pageInfo.currentPageSize
+  return filteredModelList.value.slice(start, end)
+})
+
 
 /** ═══════════ 模型配置相关 ═══════════ */
 
@@ -322,9 +307,9 @@ const handleSaveConfig = () => {
     max_tokens: configForm.maxTokens,
   }).then(
       res => {
-        console.log(res.data)
+        console.log(res.data) // 打印一下后端返回的结果
         configDrawerVisible.value = false
-        loadPageModels()
+        modelList.loadTotalModels() // 刷新当前页的模型列表
         ElMessage.success('配置保存成功')
       }
   )

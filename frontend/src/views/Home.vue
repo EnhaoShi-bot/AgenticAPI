@@ -11,6 +11,8 @@
     <section class="section">
       <h2>看一看有哪些可用的大模型？</h2>
       <hr>
+      <p>当前模型数量：{{ modelListStore.totalModelNumber }}</p>
+      <p>当前免费模型数量：{{ modelListStore.freeModelNumber }}</p>
       <button class="btn btn-sm action-btn" @click="goToModelsPage">查看模型列表</button>
     </section>
 
@@ -43,27 +45,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import {ref, onMounted, onUnmounted} from 'vue'
+import {useModelListStore} from '@/store/modelList'
+
+const modelListStore = useModelListStore()
 
 // 编程式路由
-import { useRouter } from 'vue-router'
+import {useRouter} from 'vue-router'
+
 const router = useRouter()
 
 // 路由跳转函数
 const goToModelsPage = () => {
-  router.push({ name: 'Models' })
+  router.push({name: 'Models'})
 }
 const goToRoutesPage = () => {
-  router.push({ name: 'Routes' })
+  router.push({name: 'Routes'})
 }
 const goToStudioPage = () => {
-  router.push({ name: 'Studio' })
+  router.push({name: 'Studio'})
 }
 const goToDashboardPage = () => {
-  router.push({ name: 'Dashboard' })
+  router.push({name: 'Dashboard'})
 }
 const goToDocsPage = () => {
-  router.push({ name: 'Docs' })
+  router.push({name: 'Docs'})
 }
 
 
@@ -139,9 +145,9 @@ onMounted(() => {
   const dom = containerRef.value
   if (!dom) return
   // passive:false 才能调用 e.preventDefault()
-  dom.addEventListener('wheel', handleWheel, { passive: false })
+  dom.addEventListener('wheel', handleWheel, {passive: false})
   dom.addEventListener('touchstart', handleTouchStart)
-  dom.addEventListener('touchmove', handleTouchMove, { passive: false })
+  dom.addEventListener('touchmove', handleTouchMove, {passive: false})
 })
 
 onUnmounted(() => {
