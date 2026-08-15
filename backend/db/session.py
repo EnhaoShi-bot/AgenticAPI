@@ -10,18 +10,44 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from core.config import setting  # 现在 IDE 和运行时都能正确解析
 from sqlalchemy.orm import Session
+from backend.db.mysql_tables import BaseModel  # 【关键】导入 BaseModel 会自动注册所有继承它的表定义到 metadata 中
+from sqlalchemy.ext.asyncio import create_async_engine,async_sessionmaker,async_session
 
-engine = create_engine(
-    setting.MYSQL_URL,
-    pool_pre_ping=True,
-    echo=setting.DEBUG
+engine = create_async_engine(
+    setting.MYSQL_URL, # 数据库连接字符串
+    pool_pre_ping=True, # 连接池预检查
+    echo=setting.DEBUG, # 输出数据库语句
+    pool_size=10, # 连接池大小
+    max_overflow=10, # 最大溢出连接数
+
 )
 
-sessionLocal = sessionmaker(
+asyncSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
-    bind=engine
+    bind=engine # 绑定异步引擎
 )
+
+
+async def init_database():
+    """
+    初始化数据库表结构
+    - 如果表不存在，则自动创建
+    - 如果表已存在，则跳过（不会重复创建或修改现有表）
+
+    【工作原理】
+    1. BaseModel.metadata 中存储了所有继承 BaseModel 的表定义（如 ModelsTable、ChannelsTable）
+    2. create_all() 会遍历 metadata 中的所有表，执行 CREATE TABLE IF NOT EXISTS
+    3. 新增表只需在 mysql_tables.py 中定义新类并继承 BaseModel，无需修改此函数
+    """
+    try:
+        # 使用 run_sync() 在异步引擎上执行同步的 create_all
+        async with engine.begin() as conn:
+            await conn.run_sync(BaseModel.metadata.create_all)
+        print("数据库表初始化完成（已存在的表会被跳过）")
+    except Exception as e:
+        print(f"数据库表初始化失败：{e}")
+        raise
 
 
 def orm_crud_demo():
@@ -34,7 +60,7 @@ def orm_crud_demo():
     from backend.db.mysql_tables import ModelsTable
     from sqlalchemy import update, select, delete
 
-    agentic_db = sessionLocal()
+    agentic_db = asyncSessionLocal()
 
     try:
         new_model = ModelsTable(
@@ -115,7 +141,7 @@ def raw_sql_crud_demo():
     """
     原生 SQL 风格的 CRUD 示例。
     """
-    agentic_db = sessionLocal()
+    agentic_db = asyncSessionLocal()
 
     try:
         # 增
@@ -205,14 +231,17 @@ def raw_sql_crud_demo():
         agentic_db.close()
 
 
-# 获取数据库会话
-def get_db() -> Session:
-    db = sessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+# 依赖项，获取数据库会话
+async def get_db():
+    async with asyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+# 不需要手动 finally + session.close
+# async with 上下文管理器退出时自动关闭 AsyncSession
 
 if __name__ == '__main__':
     """

@@ -10,10 +10,10 @@
       <nav class="sidebar-nav" aria-label="控制台导航">
         <ul class="sidebar-nav-list">
           <li v-for="item in dashItems" :key="item.id">
-            <RouterLink 
-              :to="item.to" 
-              class="sidebar-nav-link"
-              :class="{ active: isActive(item.to) }"
+            <RouterLink
+                :to="item.to"
+                class="sidebar-nav-link"
+                :class="{ active: isActive(item.to) }"
             >
               {{ item.name }}
             </RouterLink>
@@ -24,24 +24,24 @@
 
     <!-- 主内容区域 -->
     <main class="dashboard-main">
-      <RouterView />
+      <RouterView/>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
+import {useRoute} from 'vue-router'
 
 const route = useRoute()
 
 const dashItems = [
-  { id: 1, name: '概览', to: '/dashboard/overview' },
-  { id: 2, name: '秘钥', to: '/dashboard/keys' },
-  { id: 3, name: '渠道', to: '/dashboard/channels' },
-  { id: 4, name: '用户', to: '/dashboard/userlist' },
-  { id: 5, name: '兑换', to: '/dashboard/redemptioncodes' },
-  { id: 6, name: '运营', to: '/dashboard/operations' },
-  { id: 7, name: '安全', to: '/dashboard/security' },
+  {id: 1, name: '概览', to: '/dashboard/overview'},
+  {id: 2, name: '秘钥', to: '/dashboard/keys'},
+  {id: 3, name: '渠道', to: '/dashboard/channels'},
+  {id: 4, name: '运营', to: '/dashboard/operations'},
+  {id: 5, name: '用户', to: '/dashboard/userlist'},
+  {id: 6, name: '兑换', to: '/dashboard/redemptioncodes'},
+  {id: 7, name: '安全', to: '/dashboard/security'},
 ]
 
 const isActive = (path: string) => {
@@ -130,7 +130,7 @@ const isActive = (path: string) => {
   .sidebar {
     width: 200px;
   }
-  
+
   .dashboard-main {
     padding: var(--space-4);
   }

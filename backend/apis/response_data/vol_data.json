@@ -4,17 +4,17 @@
     "expiry": "2026-08-14T23:59:59",
     "usage": {
         "afp": {
-            "used": 28839.0414,
+            "used": 30212.9169,
             "quota": 40000.0,
             "subscribe_time": 1784084079000,
             "reset_time": 1786809599000,
             "remaining": 0
         },
         "afp_five_hour": {
-            "used": 0.0,
+            "used": 1373.8755,
             "quota": 4000.0,
-            "subscribe_time": -1,
-            "reset_time": -1,
+            "subscribe_time": 1786631653000,
+            "reset_time": 1786649653000,
             "remaining": 0
         },
         "afp_daily": {
@@ -25,7 +25,7 @@
             "remaining": 0
         },
         "afp_weekly": {
-            "used": 4.9965,
+            "used": 1378.872,
             "quota": 14000.0,
             "subscribe_time": 1786291200000,
             "reset_time": 1786896000000,
@@ -44,19 +44,19 @@
         "PlanType": "small",
         "AFPFiveHour": {
             "Quota": 4000,
-            "Used": 0,
-            "SubscribeTime": -1,
-            "ResetTime": -1
+            "Used": 1373.8755,
+            "SubscribeTime": 1786631653000,
+            "ResetTime": 1786649653000
         },
         "AFPWeekly": {
             "Quota": 14000,
-            "Used": 4.9965,
+            "Used": 1378.872,
             "SubscribeTime": 1786291200000,
             "ResetTime": 1786896000000
         },
         "AFPMonthly": {
             "Quota": 40000,
-            "Used": 28839.0414,
+            "Used": 30212.9169,
             "SubscribeTime": 1784084079000,
             "ResetTime": 1786809599000
         },

@@ -16,7 +16,7 @@ export const useModelListStore = defineStore('modelList', () => { // 当前pinia
 
     // 加载模型列表的方法
     function loadTotalModels() {
-        axios.get("api/models/get")
+        axios.get("/api/models/get")
             .then(res => {
                 totalModelList.value = res.data
             })

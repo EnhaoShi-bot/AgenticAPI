@@ -8,7 +8,7 @@
             "data": {
                 "path": "/tokenplan/personal/interferences/v2/usage",
                 "error": "Not Found",
-                "timestamp": "2026-08-13 15:25:26",
+                "timestamp": "2026-08-13 23:27:01",
                 "status": 404
             }
         },
@@ -19,6 +19,6 @@
         "errorMsg": ""
     },
     "httpStatusCode": "200",
-    "requestId": "d00653a6-0ed5-46a5-99e0-64103c2ace26",
+    "requestId": "e3c421f8-b2e1-4456-9614-c1d439964e28",
     "successResponse": true
 }

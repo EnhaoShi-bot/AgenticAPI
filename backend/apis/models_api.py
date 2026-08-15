@@ -2,9 +2,10 @@
 数据库模型接口
 """
 
+import json
 from decimal import Decimal
 from fastapi import Depends, HTTPException, APIRouter
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from db.session import get_db
@@ -12,77 +13,85 @@ from db.session import get_db
 router = APIRouter(prefix="/models")
 
 
-# 定义模型数据模型，公开，可不做鉴权校验
+# 定义模型更新数据字段定义，其中id字段不能更新，由数据库自动生成，其他字段都可选传
 class ModelSchema(BaseModel):
     model_config = {"populate_by_name": True}
 
-    id: int
-    name: str
-    label: str
+    # 基础信息
+    name: str | None = Field(default=None, alias="name")
+    label: str | None = Field(default=None, alias="label")
+    description: str | None = Field(default=None, alias="description")
     model_group: str | None = Field(default=None, alias="modelGroup")
-    is_request_mode: bool = Field(default=False, alias="isRequestMode")
-    per_request_price: Decimal = Field(default=Decimal("0"), alias="perRequestPrice")
-    input_price: Decimal = Field(default=Decimal("0"), alias="inputPrice")
-    cache_price: Decimal = Field(default=Decimal("0"), alias="cachePrice")
-    output_price: Decimal = Field(default=Decimal("0"), alias="outputPrice")
-    is_pin: bool = Field(default=False, alias="isPin")
-    is_log: bool = Field(default=False, alias="isLog")
-    context_length: int | None = Field(default=None, alias="contextLength")
-    max_tokens: int | None = Field(default=None, alias="maxTokens")
-    support_vision: bool = Field(default=False, alias="supportVision")
-    status: bool = True
 
-
-# 定义模型更新数据模型，其中id, name 字段不能更新，其他字段都可选，不是必传
-class ModelUpdateSchema(BaseModel):
-    model_config = {"populate_by_name": True}
-
-    label: str | None = None
-    model_group: str | None = Field(default=None, alias="modelGroup")
+    # 定价信息
     is_request_mode: bool | None = Field(default=None, alias="isRequestMode")
     per_request_price: Decimal | None = Field(default=None, alias="perRequestPrice")
     input_price: Decimal | None = Field(default=None, alias="inputPrice")
     cache_price: Decimal | None = Field(default=None, alias="cachePrice")
     output_price: Decimal | None = Field(default=None, alias="outputPrice")
+
+    # 模型配置
     is_pin: bool | None = Field(default=None, alias="isPin")
     is_log: bool | None = Field(default=None, alias="isLog")
+    status: bool | None = Field(default=None, alias="status")
+    channels: list[str] | None = Field(default=None, alias="channels")
     context_length: int | None = Field(default=None, alias="contextLength")
     max_tokens: int | None = Field(default=None, alias="maxTokens")
     support_vision: bool | None = Field(default=None, alias="supportVision")
-    status: bool | None = None
-    channels: str | None = None
+    icon: str = Field(default="", alias="icon")
 
 
-# 定义分页响应数据模型
-class PageResult(BaseModel):
-    list: list
-    modelNumber: int
-    pageNum: int
-    pageSize: int
-    pages: int
+def _parse_json_list(raw) -> list:
+    """把数据库里的 JSON 字符串解析为 list；空串/NULL/异常统一返回 []"""
+    if not raw or not isinstance(raw, str) or not raw.strip():
+        return []
+    try:
+        v = json.loads(raw)
+        return v if isinstance(v, list) else []
+    except Exception:
+        return []
 
 
-# 定义获取模型总括情况的数据类型
+async def _validate_channels(db: AsyncSession, names: list[str]) -> None:
+    """校验 channels 中的每个渠道名都存在于 llm_channels 表"""
+    if not names:
+        return
+    placeholders = ",".join([f":c{i}" for i in range(len(names))])
+    results = await db.execute(
+        text(f"SELECT channel_name FROM llm_channels WHERE channel_name IN ({placeholders})"),
+        {f"c{i}": n for i, n in enumerate(names)},
+    )
+    rows = results.mappings().all()
+    valid = {r["channel_name"] for r in rows}
+    invalid = [n for n in names if n not in valid]
+    if invalid:
+        raise HTTPException(status_code=400, detail=f"以下渠道不存在: {invalid}")
+
 
 @router.get("/get")
-def get_models(
-        db: Session = Depends(get_db)
+async def get_models(
+        db: AsyncSession = Depends(get_db)
 ):
     """
     获取全量模型列表
     :param db: 数据库会话
     """
-    models = db.execute(
-        text("SELECT * FROM llm_models")
-    ).mappings().all()
+    results = await db.execute(text("SELECT * FROM llm_models"))
+    models = results.mappings().all()
 
-    return [ModelSchema(**dict(model)).model_dump(by_alias=True, mode="json") for model in models]
+    result = []
+    for model in models:
+        d = dict(model)
+        # channels 在库里是 JSON 字符串，返回前端时解析为真正的数组
+        d["channels"] = _parse_json_list(d.get("channels"))
+        result.append(ModelSchema(**d).model_dump(by_alias=True, mode="json"))
+    return result
 
 
 @router.post("/post")
-def add_model(
+async def add_model(
         new_model: ModelSchema,
-        db: Session = Depends(get_db)
+        db: AsyncSession = Depends(get_db)
 ):
     """
     添加单个模型
@@ -92,34 +101,42 @@ def add_model(
     model = new_model.model_dump()  # 转换为字典
 
     # 插入前检查 name 是否已存在，避免数据库抛唯一性异常导致 500
-    existing = db.execute(
+    results = await db.execute(
         text("SELECT id FROM llm_models WHERE name = :name LIMIT 1"),
         {"name": model["name"]}
-    ).mappings().first()
-    if existing:
-        raise HTTPException(status_code=400, detail=f"模型名称 '{model['name']}' 已存在")
+    )
+    existing = results.first()
+    if existing is not None:
+        raise HTTPException(status_code=400, detail=f"模型 '{model['name']}' 已存在")
+
+    # channels：校验渠道是否都存在，再把数组序列化为 JSON 字符串存库
+    if model.get("channels") is not None:
+        await _validate_channels(db, model["channels"])
+        model["channels"] = json.dumps(model["channels"], ensure_ascii=False)
 
     try:
-        result = db.execute(
+        results = await db.execute(
             text(
                 """
                 INSERT INTO llm_models
                 (name, label, description, is_request_mode, per_request_price,
                  input_price, cache_price, output_price, model_group, is_pin,
-                 is_log, status, channels, context_length, max_tokens, support_vision)
+                 is_log, status, channels, context_length, max_tokens, support_vision,
+                 icon)
                 VALUES (:name, :label, :description, :is_request_mode, :per_request_price,
                         :input_price, :cache_price, :output_price, :model_group, :is_pin,
-                        :is_log, :status, :channels, :context_length, :max_tokens, :support_vision)
+                        :is_log, :status, :channels, :context_length, :max_tokens, :support_vision,
+                        :icon)
                 """
             ),
             {**model}  # 这里一次性插入所有字段，避免重复代码
         )
-        db.flush()
-        res_id = result.lastrowid
-        db.commit()
+        await db.flush()
+        res_id = results.lastrowid
+        await db.commit()
     except Exception as e:
         # 异常时回滚事务，防止脏数据/锁表，并返回具体错误信息
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=500, detail=f"添加模型失败: {str(e)}")
 
     if res_id:
@@ -129,32 +146,31 @@ def add_model(
 
 
 @router.put("/put")
-def put_model(
-        model_name: str,
-        update_data: ModelUpdateSchema,
-        db: Session = Depends(get_db)
+async def put_model(
+        update_data: ModelSchema,
+        db: AsyncSession = Depends(get_db)
 ):
     """
     更新单个模型数据
-    :param model_name: 模型名称（必传，用于定位记录）
     :param update_data: 需要更新的字段（Body 传参，全部选传，其中，模型名称 name 不能更新）
     :param db: 数据库会话
     :return: 更新结果提示
     """
     # 1. 检查模型是否存在
-    existing = db.execute(
+    model_name = update_data.model_dump()["name"]
+    result = await db.execute(
         text("SELECT id FROM llm_models WHERE name = :name LIMIT 1"),
         {"name": model_name}
-    ).mappings().first()
-
-    if not existing:
+    )
+    existing = result.mappings().first()
+    if existing is None:
         raise HTTPException(
             status_code=404,
-            detail=f"模型名称 '{model_name}' 不存在"
+            detail=f"模型 '{model_name}' 不存在"
         )
 
-    # 2. 过滤掉 None 值，只更新有传值的字段
-    update_dict = update_data.model_dump(exclude_unset=True)
+    # 2. 过滤掉 None 值，只更新有传值的字段，同时需要排除 name 字段，因为 name 不能更新
+    update_dict = update_data.model_dump(exclude_unset=True, exclude={"name"})
 
     if not update_dict:
         raise HTTPException(
@@ -162,22 +178,27 @@ def put_model(
             detail="未提供任何需要更新的字段"
         )
 
+    # channels：校验渠道是否都存在，再把数组序列化为 JSON 字符串存库
+    if "channels" in update_dict and update_dict["channels"] is not None:
+        await _validate_channels(db, update_dict["channels"])
+        update_dict["channels"] = json.dumps(update_dict["channels"], ensure_ascii=False)
+
     # 3. 动态构建 SET 子句
     set_clauses = [f"{key} = :{key}" for key in update_dict.keys()]
-    update_dict["original_name"] = model_name  # 用于 WHERE 条件
 
     sql = text(f"""
         UPDATE llm_models
         SET {', '.join(set_clauses)}
-        WHERE name = :original_name
+        WHERE name = :model_name
     """)
 
     # 4. 执行更新，异常时回滚
     try:
-        db.execute(sql, update_dict)
-        db.commit()
+
+        await db.execute(sql, {**update_dict, "model_name": model_name})
+        await db.commit()
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(
             status_code=500,
             detail=f"更新模型失败: {str(e)}"
@@ -188,9 +209,9 @@ def put_model(
 
 
 @router.delete("/delete")
-def delete_model(
+async def delete_model(
         model_name: str,
-        db: Session = Depends(get_db)
+        db: AsyncSession = Depends(get_db)
 ):
     """
     删除模型
@@ -208,12 +229,12 @@ def delete_model(
     model_name = model_name.strip()
 
     # 2. 检查模型是否存在
-    existing = db.execute(
+    result = await db.execute(
         text("SELECT id FROM llm_models WHERE name = :name LIMIT 1"),
         {"name": model_name}
-    ).mappings().first()
-
-    if not existing:
+    )
+    existing = result.mappings().first()
+    if existing is None:
         raise HTTPException(
             status_code=404,
             detail=f"模型名称 '{model_name}' 不存在"
@@ -221,13 +242,13 @@ def delete_model(
 
     # 3. 执行删除，异常时回滚
     try:
-        result = db.execute(
+        result = await db.execute(
             text("DELETE FROM llm_models WHERE name = :name"),
             {"name": model_name}
         )
-        db.commit()
+        await db.commit()
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(
             status_code=500,
             detail=f"删除模型失败: {str(e)}"
