@@ -102,6 +102,9 @@ env/
 .env.*
 !.env.example
 
+# 运行期数据（敏感凭证 / 调试快照），不纳入版本控制
+backend/data/
+
 # Pytest
 .pytest_cache/
 .coverage

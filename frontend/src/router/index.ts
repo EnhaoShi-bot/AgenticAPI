@@ -1,11 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 // 下面是第一级路由的组件
-import Home from '@/views/Home.vue'
-import Models from '@/views/Models.vue'
-import Routes from '@/views/Routes.vue'
-import Studio from '@/views/Studio.vue'
+import Home from '@/views/home/index.vue'
+import Models from '@/views/models/index.vue'
+import Routes from '@/views/routes/index.vue'
+import Studio from '@/views/studio/index.vue'
 import Dashboard from '@/views/Dashboard/index.vue'
-import Docs from '@/views/Docs.vue'
+import Docs from '@/views/docs/index.vue'
 
 // 下面是第二路由的组件
 import Overview from '@/views/Dashboard/Overview.vue'

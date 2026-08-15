@@ -69,26 +69,6 @@
             </el-form>
           </div>
 
-          <el-divider/>
-
-          <!-- 阿里云百炼 -->
-          <div class="settings-section">
-            <h4>阿里云百炼 Token Plan</h4>
-            <el-form label-width="100px" size="small">
-              <el-form-item label="Cookie">
-                <el-input
-                    v-model="settings.aliyunCookie"
-                    type="password"
-                    placeholder="粘贴整行 Cookie 值"
-                    show-password
-                    @change="saveSettings"
-                />
-              </el-form-item>
-            </el-form>
-          </div>
-
-          <el-divider/>
-
           <!-- 数据打到后端，持久化存储 -->
           <button @click="uploadSettings">保存设置</button>
         </div>
@@ -207,41 +187,6 @@
         </template>
       </el-card>
 
-      <!-- 阿里云百炼 Token Plan -->
-      <el-card class="plan-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            <span>阿里云百炼 Token Plan</span>
-            <el-tag size="small" type="info">Lite套餐</el-tag>
-          </div>
-          <a href="https://platform.qianwenai.com/pricing/token-plan" target="_blank">官方订阅链接</a>
-          <button @click="refreshAliUsage">刷新</button>
-        </template>
-        <div v-if="aliUsage.status !== 'ok'" class="error-text">
-          <p>{{ aliUsage.status }}</p>
-        </div>
-        <template v-else>
-          <div v-if="aliUsage.fiveHour.quota == 0">
-            <p>无5小时限额</p>
-          </div>
-          <div v-else>
-            <p>5小时用量: {{ aliUsage.fiveHour.used }} / {{ aliUsage.fiveHour.quota }}</p>
-          </div>
-          <div v-if="aliUsage.weekly.quota == 0">
-            <p>无周度限额</p>
-          </div>
-          <div v-else>
-            <p>周度用量: {{ aliUsage.weekly.used }} / {{ aliUsage.weekly.quota }}</p>
-          </div>
-          <div v-if="aliUsage.monthly.quota == 0">
-            <p>无月度限额</p>
-          </div>
-          <div v-else>
-            <p>月度用量: {{ aliUsage.monthly.used }} / {{ aliUsage.monthly.quota }}</p>
-          </div>
-        </template>
-      </el-card>
-
     </div>
   </div>
 </template>
@@ -249,14 +194,13 @@
 <script setup lang="ts">
 import {ref, reactive, onMounted} from 'vue'
 import {ElMessage} from 'element-plus'
+import {getOperations, uploadOperations} from '@/api/operations'
 import type {
   cookieSettings,
   volUsageData,
   bohrUsageData,
-  stepfunUsageData,
-  aliUsageData
-} from '@/interferences/interference'
-import axios from 'axios'
+  stepfunUsageData
+} from '@/types'
 
 /* ═══════════════════════ 状态 ═══════════════════════ */
 
@@ -268,7 +212,6 @@ const settings = ref<cookieSettings>({
   instanceId: '',
   stepToken: '',
   stepWebid: '',
-  aliyunCookie: '',
 })
 
 /* ═══════════════════════ 下面存储用量数据 ═══════════════════════ */
@@ -317,21 +260,6 @@ const stepUsage = reactive<stepfunUsageData>({
     quota: 0,
   },
 })
-const aliUsage = reactive<aliUsageData>({
-  status: "请刷新用量",
-  fiveHour: {
-    used: 0,
-    quota: 0,
-  },
-  weekly: {
-    used: 0,
-    quota: 0,
-  },
-  monthly: {
-    used: 0,
-    quota: 0,
-  },
-})
 
 /* ═══════════════════════ 初始化 ═══════════════════════ */
 
@@ -363,12 +291,11 @@ const saveSettings = () => {
 
 // 将更新后的设置上传到后端
 const uploadSettings = () => {
-  axios.post("/api/operations/upload", {
+  uploadOperations({
     brmToken: settings.value.brmToken,
     instanceId: settings.value.instanceId,
     stepToken: settings.value.stepToken,
     stepWebid: settings.value.stepWebid,
-    aliyunCookie: settings.value.aliyunCookie,
   }).then(res => {
     console.log(res.data)
     ElMessage.success('设置已上传')
@@ -379,11 +306,7 @@ const uploadSettings = () => {
 /* ═══════════════════════ 刷新数据 ═══════════════════════ */
 
 const refreshVolUsage = () => {
-  axios.get("/api/operations/get", {
-    params: {
-      refresh_channel: 'vol'
-    }
-  }).then(res => {
+  getOperations('vol').then(res => {
     if (res.data.status.vol === "200") {
       volUsage.status = "ok"
       volUsage.fiveHour.used = res.data.vol_usage.volFiveHourUsed
@@ -399,11 +322,7 @@ const refreshVolUsage = () => {
 }
 
 const refreshBohrUsage = () => {
-  axios.get("/api/operations/get", {
-    params: {
-      refresh_channel: 'bohr'
-    }
-  }).then(res => {
+  getOperations('bohr').then(res => {
     if (res.data.status.bohr === "200") {
       bohrUsage.status = "ok"
       bohrUsage.fiveHour.used = res.data.bohr_usage.bohrFiveHourUsed
@@ -419,11 +338,7 @@ const refreshBohrUsage = () => {
 }
 
 const refreshStepUsage = () => {
-  axios.get("/api/operations/get", {
-    params: {
-      refresh_channel: 'stepfun'
-    }
-  }).then(res => {
+  getOperations('stepfun').then(res => {
     if (res.data.status.stepfun === "200") {
       stepUsage.status = "ok"
       stepUsage.fiveHour.used = res.data.stepfun_usage.stepfunFiveHourUsed
@@ -438,32 +353,8 @@ const refreshStepUsage = () => {
   })
 }
 
-const refreshAliUsage = () => {
-  axios.get("/api/operations/get", {
-    params: {
-      refresh_channel: 'ali'
-    }
-  }).then(res => {
-    if (res.data.status.ali === "200") {
-      aliUsage.status = "ok"
-      aliUsage.fiveHour.used = res.data.ali_usage.aliFiveHourUsed
-      aliUsage.weekly.used = res.data.ali_usage.aliWeeklyUsed
-      aliUsage.monthly.used = res.data.ali_usage.aliMonthlyUsed
-      aliUsage.fiveHour.quota = res.data.ali_usage.aliFiveHourTotal
-      aliUsage.weekly.quota = res.data.ali_usage.aliWeeklyTotal
-      aliUsage.monthly.quota = res.data.ali_usage.aliMonthlyTotal
-    } else {
-      aliUsage.status = "数据刷新错误: " + res.data.status.ali
-    }
-  })
-}
-
 const refreshAllUsage = () => {
-  axios.get("/api/operations/get", {
-    params: {
-      refresh_channel: 'all'
-    }
-  }).then(res => {
+  getOperations('all').then(res => {
     // vol
     if (res.data.status.vol === "200") {
       volUsage.status = "ok"
@@ -499,18 +390,6 @@ const refreshAllUsage = () => {
       stepUsage.monthly.quota = res.data.stepfun_usage.stepfunMonthlyTotal
     } else {
       stepUsage.status = "数据刷新错误: " + res.data.status.stepfun
-    }
-    // ali
-    if (res.data.status.ali === "200") {
-      aliUsage.status = "ok"
-      aliUsage.fiveHour.used = res.data.ali_usage.aliFiveHourUsed
-      aliUsage.weekly.used = res.data.ali_usage.aliWeeklyUsed
-      aliUsage.monthly.used = res.data.ali_usage.aliMonthlyUsed
-      aliUsage.fiveHour.quota = res.data.ali_usage.aliFiveHourTotal
-      aliUsage.weekly.quota = res.data.ali_usage.aliWeeklyTotal
-      aliUsage.monthly.quota = res.data.ali_usage.aliMonthlyTotal
-    } else {
-      aliUsage.status = "数据刷新错误: " + res.data.status.ali
     }
   })
 }
@@ -647,9 +526,21 @@ onMounted(() => {
 
 .data-sections {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-4);
   margin-top: var(--space-2);
+}
+
+@media (max-width: 1024px) {
+  .data-sections {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .data-sections {
+    grid-template-columns: 1fr;
+  }
 }
 
 .plan-card {

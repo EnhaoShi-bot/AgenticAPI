@@ -163,8 +163,8 @@
 <script setup lang="ts">
 import {ref, reactive, computed, onMounted} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import axios from 'axios'
-import type {channelInfoSchema} from '@/interferences/interference'
+import {getChannels, addChannel, updateChannel, deleteChannel} from '@/api/channels'
+import type {channelInfoSchema} from '@/types'
 
 /** ═══════════ 列表与筛选 ═══════════ */
 
@@ -182,7 +182,7 @@ const filteredChannels = computed(() => {
 // 获取全量渠道列表
 const fetchChannels = () => {
   loading.value = true
-  axios.get('/api/channels/get')
+  getChannels()
       .then(res => {
         channels.value = res.data
       })
@@ -277,7 +277,7 @@ const handleSubmit = () => {
   submitting.value = true
   if (dialogMode.value === 'add') {
     // 新增：POST 全量字段
-    axios.post('/api/channels/post', {...channelForm})
+    addChannel({...channelForm})
         .then(res => {
           ElMessage.success(res.data || '添加渠道成功')
           drawerVisible.value = false
@@ -292,7 +292,7 @@ const handleSubmit = () => {
         })
   } else {
     // 更新：PUT 全量字段（后端按 channel_name 定位，且 channel_name 不会被更新）
-    axios.put('/api/channels/put', {...channelForm})
+    updateChannel({...channelForm})
         .then(res => {
           ElMessage.success(res.data || '保存配置成功')
           drawerVisible.value = false
@@ -312,7 +312,7 @@ const handleSubmit = () => {
 
 // 表格内 switch 切换状态：只更新 status 字段，失败时重新拉取列表以恢复真实状态
 const handleStatusChange = (row: channelInfoSchema, val: boolean) => {
-  axios.put('/api/channels/put', {
+  updateChannel({
     channelName: row.channelName,
     status: val,
   })
@@ -340,9 +340,7 @@ const handleDelete = (row: channelInfoSchema) => {
       }
   ).then(() => {
     // 删除接口通过 query 参数 channel_name 传参
-    axios.delete('/api/channels/delete', {
-      params: {channel_name: row.channelName},
-    })
+    deleteChannel(row.channelName)
         .then(res => {
           ElMessage.success(res.data || '渠道删除成功')
           fetchChannels()

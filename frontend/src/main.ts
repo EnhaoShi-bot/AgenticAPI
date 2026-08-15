@@ -15,10 +15,7 @@ import App from './App.vue'
 import router from './router/index.ts'
 
 // 引入pinia
-import {createPinia} from 'pinia'
-
-const pinia = createPinia()
-
+import pinia from '@/stores/index'
 
 const app = createApp(App)
 app.use(router) // 使用路由
