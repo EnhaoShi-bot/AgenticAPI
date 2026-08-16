@@ -7,7 +7,7 @@ from app.api.deps import get_db
 from app.schemas.model import ModelSchema
 from app.services import model_service
 
-router = APIRouter(prefix="/models")
+router = APIRouter(prefix="/models",tags=["Models"])
 
 
 @router.get("/get")

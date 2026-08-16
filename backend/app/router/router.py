@@ -2,9 +2,10 @@
 
 from fastapi import APIRouter
 
-from app.api import channels, models, operations
+from app.api import channels, models, operations, user
 
 router = APIRouter()
 router.include_router(models.router)  # 和模型列表相关接口
 router.include_router(channels.router)  # 和渠道列表相关接口
 router.include_router(operations.router)  # 和上游渠道运维相关接口
+router.include_router(user.router)  # 和用户相关接口

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Body
 from app.schemas.operations import MessageResponse, OperationsResponse
 from app.services import operations_service
 
-router = APIRouter(prefix="/operations")
+router = APIRouter(prefix="/operations",tags=["Operations"])
 
 
 @router.get("/get", response_model=OperationsResponse)

@@ -7,7 +7,7 @@ from app.api.deps import get_db
 from app.schemas.channel import ChannelSchema
 from app.services import channel_service
 
-router = APIRouter(prefix="/channels")
+router = APIRouter(prefix="/channels",tags=["Channels"])
 
 
 @router.get("/get")
