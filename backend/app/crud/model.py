@@ -2,7 +2,6 @@
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.crud.base import build_set_clause
 
 
@@ -20,6 +19,16 @@ async def get_id_by_name(db: AsyncSession, name: str) -> int | None:
     )
     row = result.mappings().first()
     return row["id"] if row else None
+
+
+async def get_by_name(db: AsyncSession, name: str) -> dict | None:
+    """按模型名称查询整行（原始行字典，中转链路用）"""
+    result = await db.execute(
+        text("SELECT * FROM llm_models WHERE name = :name LIMIT 1"),
+        {"name": name},
+    )
+    row = result.mappings().first()
+    return dict(row) if row else None
 
 
 async def insert(db: AsyncSession, model: dict) -> int:

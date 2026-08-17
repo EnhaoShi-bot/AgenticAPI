@@ -2,199 +2,131 @@
 
 <template>
   <div class="operations-page">
-
-
-    <!-- 页面标题 -->
-    <div class="action-bar" style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
-      <strong>上游 <span class="highlight">TokenPlan</span> 用量监控</strong>
-      <div style="display: flex; gap: 8px;">
-        <button @click="refreshAllUsage" :loading="loading">全部刷新</button>
-        <button @click="toggleSettings">设置凭证</button>
+    <!-- 页面标题与操作 -->
+    <header class="page-head">
+      <h2>上游 <span class="highlight">TokenPlan</span> 用量监控</h2>
+      <div class="action-bar">
+        <a-button :loading="loading" @click="refreshAllUsage">
+          <template #icon><icon-refresh/></template>
+          全部刷新
+        </a-button>
+        <a-button @click="settingsVisible = true">
+          <template #icon><icon-settings/></template>
+          设置凭证
+        </a-button>
       </div>
-    </div>
-
-    <!-- 设置面板侧边栏 -->
-    <transition name="slide">
-      <div v-if="showSettings" class="settings-sidebar">
-        <div class="settings-sidebar-header">
-          <h3>设置凭证</h3>
-          <button class="close-btn" @click="toggleSettings">✕</button>
-        </div>
-        <div class="settings-sidebar-body">
-          <!-- 火山方舟 -->
-          <div class="settings-section">
-            <h4>火山方舟 BohrClaw</h4>
-            <el-form label-width="100px" size="small">
-              <el-form-item label="brmToken">
-                <el-input
-                    v-model="settings.brmToken"
-                    type="password"
-                    placeholder="粘贴 brmToken（JWT）"
-                    show-password
-                    @change="saveSettings"
-                />
-              </el-form-item>
-              <el-form-item label="实例 ID">
-                <el-input
-                    v-model="settings.instanceId"
-                    placeholder="粘贴 ArkClaw Seat 实例 ID（如 ci-xxx）"
-                    @change="saveSettings"
-                />
-              </el-form-item>
-            </el-form>
-          </div>
-
-          <el-divider/>
-
-          <!-- 阶跃星辰 -->
-          <div class="settings-section">
-            <h4>阶跃星辰 Step Plan</h4>
-            <el-form label-width="100px" size="small">
-              <el-form-item label="Oasis-Token">
-                <el-input
-                    v-model="settings.stepToken"
-                    type="password"
-                    placeholder="浏览器 Cookie 里的 Oasis-Token 值"
-                    show-password
-                    @change="saveSettings"
-                />
-              </el-form-item>
-              <el-form-item label="Oasis-Webid">
-                <el-input
-                    v-model="settings.stepWebid"
-                    placeholder="可不填"
-                    @change="saveSettings"
-                />
-              </el-form-item>
-            </el-form>
-          </div>
-
-          <!-- 数据打到后端，持久化存储 -->
-          <button @click="uploadSettings">保存设置</button>
-        </div>
-      </div>
-    </transition>
-
-    <!-- 遮罩层 -->
-    <transition name="fade">
-      <div v-if="showSettings" class="settings-overlay" @click="toggleSettings"></div>
-    </transition>
+    </header>
 
     <!-- 数据展示区域 -->
     <div class="data-sections">
       <!-- 火山方舟 Agent Plan -->
-      <el-card class="plan-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
+      <div class="plan-card">
+        <div class="plan-card-head">
+          <div class="plan-card-title">
             <span>火山方舟 Agent Plan</span>
-            <el-tag size="small" type="info">Small订阅 × 2</el-tag>
+            <a-tag size="small" color="arcoblue">Small订阅 × 2</a-tag>
           </div>
-          <a href="https://www.volcengine.com/activity/agentplan" target="_blank">官方订阅链接</a>
-          <button @click="refreshVolUsage">刷新</button>
-        </template>
-        <div v-if="volUsage.status !== 'ok'" class="error-text">
-          <p>{{ volUsage.status }}</p>
+          <a-button type="text" size="small" @click="refreshVolUsage">
+            <template #icon><icon-sync/></template>
+            刷新
+          </a-button>
         </div>
+        <a class="plan-link" href="https://www.volcengine.com/activity/agentplan" target="_blank">
+          官方订阅链接<icon-launch/>
+        </a>
+        <div v-if="volUsage.status !== 'ok'" class="error-text">{{ volUsage.status }}</div>
         <template v-else>
-          <div v-if="volUsage.fiveHour.quota == 0">
-            <p>无5小时限额</p>
-          </div>
-          <div v-else>
-            <p>5小时用量: {{ volUsage.fiveHour.used }} / {{ volUsage.fiveHour.quota }}</p>
-          </div>
-          <div v-if="volUsage.weekly.quota == 0">
-            <p>无周度限额</p>
-          </div>
-          <div v-else>
-            <p>周度用量: {{ volUsage.weekly.used }} / {{ volUsage.weekly.quota }}</p>
-          </div>
-          <div v-if="volUsage.monthly.quota == 0">
-            <p>无月度限额</p>
-          </div>
-          <div v-else>
-            <p>月度用量: {{ volUsage.monthly.used }} / {{ volUsage.monthly.quota }}</p>
-          </div>
+          <plan-usage :usage="volUsage"/>
         </template>
-      </el-card>
+      </div>
 
       <!-- 深势科技 Coding Plan -->
-      <el-card class="plan-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
+      <div class="plan-card">
+        <div class="plan-card-head">
+          <div class="plan-card-title">
             <span>深势科技 Coding Plan</span>
-            <el-tag size="small" type="info">Standard订阅</el-tag>
+            <a-tag size="small" color="green">Standard订阅</a-tag>
           </div>
-          <a href="https://bohrclaw.bohrium.com/coding-plan" target="_blank">官方订阅链接</a>
-          <button @click="refreshBohrUsage">刷新</button>
-        </template>
-        <div v-if="bohrUsage.status !== 'ok'" class="error-text">
-          <p>{{ bohrUsage.status }}</p>
+          <a-button type="text" size="small" @click="refreshBohrUsage">
+            <template #icon><icon-sync/></template>
+            刷新
+          </a-button>
         </div>
+        <a class="plan-link" href="https://bohrclaw.bohrium.com/coding-plan" target="_blank">
+          官方订阅链接<icon-launch/>
+        </a>
+        <div v-if="bohrUsage.status !== 'ok'" class="error-text">{{ bohrUsage.status }}</div>
         <template v-else>
-          <div v-if="bohrUsage.fiveHour.quota == 0">
-            <p>无5小时限额</p>
-          </div>
-          <div v-else>
-            <p>5小时用量: {{ bohrUsage.fiveHour.used }} / {{ bohrUsage.fiveHour.quota }}</p>
-          </div>
-          <div v-if="bohrUsage.weekly.quota == 0">
-            <p>无周度限额</p>
-          </div>
-          <div v-else>
-            <p>周度用量: {{ bohrUsage.weekly.used }} / {{ bohrUsage.weekly.quota }}</p>
-          </div>
-          <div v-if="bohrUsage.monthly.quota == 0">
-            <p>无月度限额</p>
-          </div>
-          <div v-else>
-            <p>月度用量: {{ bohrUsage.monthly.used }} / {{ bohrUsage.monthly.quota }}</p>
-          </div>
+          <plan-usage :usage="bohrUsage"/>
         </template>
-      </el-card>
+      </div>
 
       <!-- 阶跃星辰 Step Plan -->
-      <el-card class="plan-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
+      <div class="plan-card">
+        <div class="plan-card-head">
+          <div class="plan-card-title">
             <span>阶跃星辰 Step Plan</span>
-            <el-tag size="small" type="info">Mini订阅</el-tag>
+            <a-tag size="small" color="purple">Mini订阅</a-tag>
           </div>
-          <a href="https://platform.stepfun.com/step-plan" target="_blank">官方订阅链接</a>
-          <button @click="refreshStepUsage">刷新</button>
-        </template>
-        <div v-if="stepUsage.status !== 'ok'" class="error-text">
-          <p>{{ stepUsage.status }}</p>
+          <a-button type="text" size="small" @click="refreshStepUsage">
+            <template #icon><icon-sync/></template>
+            刷新
+          </a-button>
         </div>
+        <a class="plan-link" href="https://platform.stepfun.com/step-plan" target="_blank">
+          官方订阅链接<icon-launch/>
+        </a>
+        <div v-if="stepUsage.status !== 'ok'" class="error-text">{{ stepUsage.status }}</div>
         <template v-else>
-          <div v-if="stepUsage.fiveHour.quota == 0">
-            <p>无5小时限额</p>
-          </div>
-          <div v-else>
-            <p>5小时用量: {{ stepUsage.fiveHour.used }} / {{ stepUsage.fiveHour.quota }}</p>
-          </div>
-          <div v-if="stepUsage.weekly.quota == 0">
-            <p>无周度限额</p>
-          </div>
-          <div v-else>
-            <p>周度用量: {{ stepUsage.weekly.used }} / {{ stepUsage.weekly.quota }}</p>
-          </div>
-          <div v-if="stepUsage.monthly.quota == 0">
-            <p>无月度限额</p>
-          </div>
-          <div v-else>
-            <p>月度用量: {{ stepUsage.monthly.used }} / {{ stepUsage.monthly.quota }}</p>
-          </div>
+          <plan-usage :usage="stepUsage"/>
         </template>
-      </el-card>
-
+      </div>
     </div>
+
+    <!-- 设置凭证抽屉（替代原自绘侧边栏） -->
+    <a-drawer v-model:visible="settingsVisible" title="设置凭证" :width="440" unmount-on-close>
+      <a-form :model="settings" layout="vertical">
+        <!-- 火山方舟 -->
+        <div class="settings-section">
+          <h4>火山方舟 BohrClaw</h4>
+          <a-form-item label="brmToken">
+            <a-input-password v-model="settings.brmToken" placeholder="粘贴 brmToken（JWT）" @change="saveSettings"/>
+          </a-form-item>
+          <a-form-item label="实例 ID">
+            <a-input v-model="settings.instanceId" placeholder="粘贴 ArkClaw Seat 实例 ID（如 ci-xxx）" @change="saveSettings"/>
+          </a-form-item>
+        </div>
+
+        <a-divider/>
+
+        <!-- 阶跃星辰 -->
+        <div class="settings-section">
+          <h4>阶跃星辰 Step Plan</h4>
+          <a-form-item label="Oasis-Token">
+            <a-input-password v-model="settings.stepToken" placeholder="浏览器 Cookie 里的 Oasis-Token 值" @change="saveSettings"/>
+          </a-form-item>
+          <a-form-item label="Oasis-Webid">
+            <a-input v-model="settings.stepWebid" placeholder="可不填" @change="saveSettings"/>
+          </a-form-item>
+        </div>
+      </a-form>
+
+      <template #footer>
+        <div class="drawer-footer">
+          <a-button @click="settingsVisible = false">关闭</a-button>
+          <a-button type="primary" @click="uploadSettings">保存到服务器</a-button>
+        </div>
+      </template>
+    </a-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import {ref, reactive, onMounted} from 'vue'
-import {ElMessage} from 'element-plus'
+import {ref, reactive, onMounted, defineComponent, h} from 'vue'
+import {Message} from '@arco-design/web-vue'
+import {Progress} from '@arco-design/web-vue'
 import {getOperations, uploadOperations} from '@/api/operations'
+import {getErrorMessage} from '@/api/request'
 import type {
   cookieSettings,
   volUsageData,
@@ -202,10 +134,61 @@ import type {
   stepfunUsageData
 } from '@/types'
 
+/* ═══════════════════════ 用量卡片公共部分（5小时/周/月进度条） ═══════════════════════ */
+
+interface planWindow {
+  used: number
+  quota: number
+}
+
+/** 单个时间窗的用量进度条：无限额时显示提示文字 */
+const planWindowRow = defineComponent({
+  props: {
+    label: {type: String, required: true},
+    window: {type: Object as () => planWindow, required: true},
+  },
+  setup(props) {
+    return () => {
+      if (!props.window.quota) {
+        return h('div', {class: 'plan-row plan-row-none'}, `无${props.label}限额`)
+      }
+      const percent = Math.min(100, (props.window.used / props.window.quota) * 100)
+      return h('div', {class: 'plan-row'}, [
+        h('div', {class: 'plan-row-head'}, [
+          h('span', {class: 'plan-row-label'}, props.label),
+          h('span', {class: 'plan-row-value'},
+              `${props.window.used.toLocaleString()} / ${props.window.quota.toLocaleString()}`),
+        ]),
+        h(Progress, {
+          size: 'small' as const,
+          showText: false,
+          percent,
+          // 用量超过 80% 转橙色、95% 转红色预警
+          color: percent >= 95 ? '#F53F3F' : percent >= 80 ? '#FF7D00' : undefined,
+        }),
+      ])
+    }
+  },
+})
+
+/** 一个订阅计划的用量展示（三行进度条） */
+const planUsage = defineComponent({
+  props: {
+    usage: {type: Object as () => {fiveHour: planWindow; weekly: planWindow; monthly: planWindow}, required: true},
+  },
+  setup(props) {
+    return () => h('div', {class: 'plan-rows'}, [
+      h(planWindowRow, {label: '5小时', window: props.usage.fiveHour}),
+      h(planWindowRow, {label: '周度', window: props.usage.weekly}),
+      h(planWindowRow, {label: '月度', window: props.usage.monthly}),
+    ])
+  },
+})
+
 /* ═══════════════════════ 状态 ═══════════════════════ */
 
 const LS_SETTINGS = 'tokenplan_settings'
-const showSettings = ref(false) // 是否显示设置面板
+const settingsVisible = ref(false) // 凭证设置抽屉
 const loading = ref(false) // 是否正在加载数据
 const settings = ref<cookieSettings>({
   brmToken: '',
@@ -279,14 +262,10 @@ const loadSettings = () => {
 
 /* ═══════════════════════ 设置面板 ═══════════════════════ */
 
-const toggleSettings = () => {
-  showSettings.value = !showSettings.value
-}
-
 // 保存设置到 localStorage
 const saveSettings = () => {
   localStorage.setItem(LS_SETTINGS, JSON.stringify(settings.value))
-  ElMessage.success('设置已保存')
+  Message.success('设置已保存')
 }
 
 // 将更新后的设置上传到后端
@@ -296,9 +275,11 @@ const uploadSettings = () => {
     instanceId: settings.value.instanceId,
     stepToken: settings.value.stepToken,
     stepWebid: settings.value.stepWebid,
-  }).then(res => {
-    console.log(res.data)
-    ElMessage.success('设置已上传')
+  }).then(() => {
+    Message.success('设置已上传')
+  }).catch(err => {
+    console.error(err)
+    Message.error(getErrorMessage(err, '设置上传失败'))
   })
 }
 
@@ -318,6 +299,9 @@ const refreshVolUsage = () => {
     } else {
       volUsage.status = "数据刷新错误: " + res.data.status.vol
     }
+  }).catch(err => {
+    console.error(err)
+    volUsage.status = getErrorMessage(err, '数据刷新失败')
   })
 }
 
@@ -334,6 +318,9 @@ const refreshBohrUsage = () => {
     } else {
       bohrUsage.status = "数据刷新错误: " + res.data.status.bohr
     }
+  }).catch(err => {
+    console.error(err)
+    bohrUsage.status = getErrorMessage(err, '数据刷新失败')
   })
 }
 
@@ -350,10 +337,14 @@ const refreshStepUsage = () => {
     } else {
       stepUsage.status = "数据刷新错误: " + res.data.status.stepfun
     }
+  }).catch(err => {
+    console.error(err)
+    stepUsage.status = getErrorMessage(err, '数据刷新失败')
   })
 }
 
 const refreshAllUsage = () => {
+  loading.value = true
   getOperations('all').then(res => {
     // vol
     if (res.data.status.vol === "200") {
@@ -391,6 +382,11 @@ const refreshAllUsage = () => {
     } else {
       stepUsage.status = "数据刷新错误: " + res.data.status.stepfun
     }
+  }).catch(err => {
+    console.error(err)
+    Message.error(getErrorMessage(err, '数据刷新失败'))
+  }).finally(() => {
+    loading.value = false
   })
 }
 
@@ -404,131 +400,25 @@ onMounted(() => {
 
 <style scoped>
 .operations-page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.page-title {
-  font-size: var(--text-xl);
-  font-weight: var(--font-bold);
-  margin: 0;
+  padding: var(--space-5) var(--space-6);
 }
 
 .highlight {
-  color: var(--color-error);
+  color: var(--color-primary);
 }
 
 .action-bar {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
-.last-updated {
-  margin-left: auto;
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
-
-/* 设置面板侧边栏 */
-.settings-sidebar {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 420px;
-  max-width: 90vw;
-  height: 100vh;
-  background: var(--color-bg, #fff);
-  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.08);
-  z-index: 1001;
-  display: flex;
-  flex-direction: column;
-}
-
-.settings-sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--color-border, #e4e7ed);
-}
-
-.settings-sidebar-header h3 {
-  margin: 0;
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  color: var(--color-text-muted);
-  line-height: 1;
-  padding: 4px;
-}
-
-.close-btn:hover {
-  color: var(--color-text);
-}
-
-.settings-sidebar-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-}
-
-.settings-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.35);
-  z-index: 1000;
-}
-
-/* 过渡动画 */
-.slide-enter-active,
-.slide-leave-active {
-  transition: transform 0.3s ease;
-}
-
-.slide-enter-from,
-.slide-leave-to {
-  transform: translateX(100%);
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.settings-section h4 {
-  margin: 0 0 var(--space-3) 0;
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
-  color: var(--color-text-secondary);
-}
-
-.form-hint {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  margin-top: var(--space-1);
-}
-
+/* 订阅计划卡片 */
 .data-sections {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-4);
-  margin-top: var(--space-2);
 }
 
 @media (max-width: 1024px) {
@@ -545,31 +435,89 @@ onMounted(() => {
 
 .plan-card {
   min-height: 160px;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4) var(--space-5);
 }
 
-.card-header {
+.plan-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.plan-card p {
-  margin: var(--space-2) 0;
-  font-size: var(--text-sm);
+.plan-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
   color: var(--color-text);
 }
 
-.empty-text {
+.plan-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--text-xs);
+  color: var(--color-primary);
+  text-decoration: none;
+  margin: var(--space-1) 0 var(--space-2);
+}
+
+.plan-link:hover {
+  text-decoration: underline;
+}
+
+/* 用量行（进度条），由渲染函数生成 */
+:deep(.plan-rows) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+:deep(.plan-row-head) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-1);
+}
+
+:deep(.plan-row-label) {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+:deep(.plan-row-value) {
+  font-size: var(--text-xs);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+:deep(.plan-row-none) {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
-  text-align: center;
-  padding: var(--space-4) 0;
+}
+
+/* 凭证设置抽屉 */
+.settings-section h4 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-secondary);
+}
+
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 
 .error-text {
   font-size: var(--text-sm);
   color: var(--color-error);
-  text-align: center;
   padding: var(--space-4) 0;
 }
 </style>

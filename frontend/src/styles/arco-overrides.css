@@ -1,0 +1,94 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Arco Design 细节微调（仅亮色主题）
+   Arco 默认样式已与全站令牌一致（arcoblue 主色 + gray 中性色），
+   这里只做少量贴合本项目布局的细节调整，不做大范围覆盖。
+   全站密度基调：紧凑型企业控制台 —— 表格 13px、行距收紧、表单间距 16px。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 全局密度：表格 ── */
+.arco-table {
+  font-size: 13px;
+  /* 表格以数字列为主，统一等宽数字对齐 */
+  font-variant-numeric: tabular-nums;
+}
+
+.arco-table .arco-table-th {
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.arco-table .arco-table-td {
+  padding: 9px 12px;
+}
+
+/* 表格：表头浅灰底 + 次级文字色，行悬停高亮 */
+.arco-table-th {
+  background-color: var(--color-gray-50);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-medium);
+}
+
+.arco-table-tr:hover .arco-table-td:not(.arco-table-col-fixed-left, .arco-table-col-fixed-right) {
+  background-color: var(--color-gray-50);
+}
+
+/* 表格展开行内部背景与内边距 */
+.arco-table-expand-row {
+  padding: var(--space-2) 0;
+}
+
+/* ── 全局密度：表单 / 描述列表 / 弹窗 ── */
+.arco-form-item {
+  margin-bottom: var(--space-4);
+}
+
+.arco-descriptions {
+  font-size: 13px;
+}
+
+.arco-descriptions .arco-descriptions-item-label-block,
+.arco-descriptions .arco-descriptions-item-value-block {
+  padding: 9px 12px;
+}
+
+.arco-modal-header .arco-modal-title {
+  font-size: var(--text-base);
+}
+
+.arco-drawer-body {
+  padding: var(--space-4) var(--space-5);
+}
+
+/* 全局弹层圆角与描边统一 */
+.arco-modal,
+.arco-drawer,
+.arco-trigger-popup,
+.arco-select-popup,
+.arco-dropdown {
+  border-radius: var(--radius-lg);
+}
+
+/* 分页器与表格间距配合：去掉默认 margin-top 由页面自行控制 */
+.arco-pagination {
+  row-gap: var(--space-2);
+}
+
+/* 消息提示宽度略收紧 */
+.arco-message-list {
+  width: 380px;
+}
+
+/* 抽屉标题字重 */
+.arco-drawer-header .arco-drawer-title {
+  font-weight: var(--font-semibold);
+}
+
+/* 标签页：激活项字重 */
+.arco-tabs-tab-active .arco-tabs-tab-title {
+  font-weight: var(--font-semibold);
+}
+
+/* 数字输入框过窄时隐藏步进按钮文本溢出 */
+.arco-input-number-step-button {
+  padding: 0;
+}

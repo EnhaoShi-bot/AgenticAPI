@@ -32,38 +32,55 @@ async def list_models(db: AsyncSession) -> list[dict]:
     return result
 
 
-async def create_model(db: AsyncSession, new_model: ModelSchema) -> str:
-    """添加单个模型"""
+async def create_model(db: AsyncSession, new_model: ModelSchema) -> int:
+    """添加单个模型，返回新增记录的自增主键 id
+
+    业务错误（模型名重复、渠道不存在等）抛 HTTPException，由全局异常处理器统一格式化；
+    数据库错误抛 SQLAlchemyError，同样由全局异常处理器捕获，
+    回滚交由 get_db 依赖的 except 分支完成，这里无需 try/except。
+    """
     model = new_model.model_dump()
 
     # 插入前检查 name 是否已存在，避免数据库抛唯一性异常导致 500
     if await model_crud.get_id_by_name(db, model["name"]):
         raise HTTPException(status_code=400, detail=f"模型 '{model['name']}' 已存在")
 
+    # NOT NULL 列的入库默认值（crud 层用原生 SQL 插入，ORM 的 default 不会生效）
+    if not model.get("label"):
+        model["label"] = model["name"]
+    model["model_group"] = model.get("model_group") or "free"
+    for price in ("per_request_price", "input_price", "cache_price", "output_price"):
+        if model.get(price) is None:
+            model[price] = 0
+    for flag in ("is_request_mode", "is_pin", "is_log", "support_vision"):
+        if model.get(flag) is None:
+            model[flag] = False
+    if model.get("status") is None:
+        model["status"] = True
+
     # channels：校验渠道是否都存在，再把数组序列化为 JSON 字符串存库
     if model.get("channels") is not None:
         await _validate_channels(db, model["channels"])
         model["channels"] = json.dumps(model["channels"], ensure_ascii=False)
 
-    try:
-        res_id = await model_crud.insert(db, model)
-        await db.commit()
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(status_code=500, detail=f"添加模型失败: {str(e)}")
+    res_id = await model_crud.insert(db, model)
+    await db.commit()
 
-    if res_id:
-        return f"添加模型成功，模型ID：{res_id}"
-    raise HTTPException(status_code=500, detail="添加模型失败")
+    if not res_id:
+        raise HTTPException(status_code=500, detail="添加模型失败")
+    return res_id
 
 
-async def update_model(db: AsyncSession, update_data: ModelSchema) -> str:
-    """更新单个模型数据（name 不能更新）"""
-    model_name = update_data.model_dump()["name"]
+async def update_model(db: AsyncSession, model_name: str, update_data: ModelSchema) -> None:
+    """更新单个模型数据（按 name 定位，name 本身不能更新）"""
+    if not model_name or not model_name.strip():
+        raise HTTPException(status_code=400, detail="模型名称不能为空")
+    model_name = model_name.strip()
+
     if not await model_crud.get_id_by_name(db, model_name):
         raise HTTPException(status_code=404, detail=f"模型 '{model_name}' 不存在")
 
-    # 过滤掉 None 值，只更新有传值的字段，同时排除 name 字段
+    # 过滤掉未传字段，同时排除 name 字段（定位键不可更新）
     update_dict = update_data.model_dump(exclude_unset=True, exclude={"name"})
     if not update_dict:
         raise HTTPException(status_code=400, detail="未提供任何需要更新的字段")
@@ -73,17 +90,11 @@ async def update_model(db: AsyncSession, update_data: ModelSchema) -> str:
         await _validate_channels(db, update_dict["channels"])
         update_dict["channels"] = json.dumps(update_dict["channels"], ensure_ascii=False)
 
-    try:
-        await model_crud.update_by_name(db, model_name, update_dict)
-        await db.commit()
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(status_code=500, detail=f"更新模型失败: {str(e)}")
-
-    return f"模型 '{model_name}' 更新成功"
+    await model_crud.update_by_name(db, model_name, update_dict)
+    await db.commit()
 
 
-async def remove_model(db: AsyncSession, model_name: str) -> str:
+async def remove_model(db: AsyncSession, model_name: str) -> None:
     """删除模型"""
     if not model_name or not model_name.strip():
         raise HTTPException(status_code=400, detail="模型名称不能为空")
@@ -92,14 +103,8 @@ async def remove_model(db: AsyncSession, model_name: str) -> str:
     if not await model_crud.get_id_by_name(db, model_name):
         raise HTTPException(status_code=404, detail=f"模型名称 '{model_name}' 不存在")
 
-    try:
-        rowcount = await model_crud.delete_by_name(db, model_name)
-        await db.commit()
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(status_code=500, detail=f"删除模型失败: {str(e)}")
+    rowcount = await model_crud.delete_by_name(db, model_name)
+    await db.commit()
 
     if rowcount == 0:
         raise HTTPException(status_code=500, detail="删除模型失败，未影响任何记录")
-
-    return f"模型 '{model_name}' 删除成功"

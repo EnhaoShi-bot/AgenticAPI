@@ -1,10 +1,8 @@
 """数据库引擎、会话工厂与初始化"""
 
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-
 from app.core.config import setting
-# 导入 app.models 包会触发所有表定义注册到 BaseModel.metadata
-from app.models import BaseModel
+from app.models import BaseModel  # 导入 app.models 包会触发所有表定义注册到 BaseModel.metadata
 
 engine = create_async_engine(
     setting.MYSQL_URL,  # 数据库连接字符串
@@ -18,6 +16,7 @@ asyncSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
     bind=engine,  # 绑定异步引擎
+    expire_on_commit=False,  # 禁用会话过期，保持连接打开
 )
 
 

@@ -26,7 +26,7 @@ def _save_raw(name: str, data) -> None:
 def get_operations(refresh_channel: str = "all") -> dict:
     """
     获取上游运维数据
-    :param refresh_channel: 刷新的渠道，可选值为 "vol"、"bohr"、"stepfun"、"ali" 或 "all"
+    :param refresh_channel: 刷新的渠道，可选值为 "vol"、"bohr"、"stepfun" 或 "all"
     """
     re_dict = {
         "status": {},

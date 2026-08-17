@@ -53,8 +53,10 @@ const activeIndex = ref<number | null>(null)
 const loading = ref(false)
 
 const docList = [
-  { title: '快速开始', path: '/docs/getting-started.md' },
-  { title: '样式参考', path: '/docs/styles-guide.md' }
+  { title: '项目介绍文档', path: '/docs/README.md' },
+  { title: '前端样式规范', path: '/docs/前端UI构建规范.md' },
+  { title: '后端接口规范', path: '/docs/后端API接口规范.md' },
+
 ]
 
 async function loadDoc(path: string, index: number) {
@@ -62,10 +64,17 @@ async function loadDoc(path: string, index: number) {
   activeIndex.value = index
   try {
     const res = await fetch(path)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const text = await res.text()
+    // 拦截 Vite SPA 回退：public 下不存在的文件会以 200 返回 index.html，
+    // 若放行会被 markdown-it 当正文渲染成整页 HTML 源码
+    if (text.trimStart().startsWith('<!DOCTYPE')) {
+      throw new Error('文档不存在或路径错误')
+    }
     renderedContent.value = md.render(text)
   } catch (error) {
-    renderedContent.value = ''
+    renderedContent.value =
+      `<p style="color:var(--color-error)">文档加载失败：${path}<br/>${(error as Error).message}</p>`
     console.error('加载文档失败:', error)
   } finally {
     loading.value = false
@@ -95,7 +104,7 @@ onMounted(() => {
   /* --------------------↓侧边栏宽度↓-------------------- */
   width: 200px;
   /* --------------------↑侧边栏宽度↑-------------------- */
-  background-color: var(--color-gray-50);
+  background-color: var(--color-white);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
@@ -152,27 +161,27 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-6);
+  margin: 2px var(--space-3);
+  padding: var(--space-2) var(--space-3);
   font-size: var(--text-sm);
   font-weight: var(--font-normal);
   color: var(--color-text-secondary);
   cursor: pointer;
   transition: all var(--transition-fast);
-  border-left: 3px solid transparent;
+  border-radius: var(--radius-md);
+  border-left: none;
 }
 
 .sidebar-nav a:hover {
-  background-color: var(--color-white);
+  background-color: var(--color-gray-100);
   color: var(--color-text);
-  border-left-color: var(--color-gray-300);
 }
 
 .sidebar-nav a.active {
-  background-color: var(--color-white);
+  background-color: var(--color-primary-lighter);
   color: var(--color-primary);
   font-weight: var(--font-medium);
-  border-left-color: var(--color-primary);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .nav-icon {

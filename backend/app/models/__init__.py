@@ -8,5 +8,17 @@ init_database() 依赖此机制自动建表。
 from app.models.base import BaseModel
 from app.models.llm_model import ModelsTable
 from app.models.llm_channel import ChannelsTable
+from app.models.user import UserTabel, UserTokenTabel
+from app.models.api_key import ApiKeyTable
+from app.models.log import LogsTable
+from app.models.chat_record import ChatRecordTable
+from app.models.usage_stats import UsageStatsTable
+from app.models.usage_summary import UsageSummaryTable
+from app.models.system_config import SystemConfigTable
 
-__all__ = ["BaseModel", "ModelsTable", "ChannelsTable"]
+
+__all__ = [
+    "BaseModel", "ModelsTable", "ChannelsTable",
+    "UserTabel", "UserTokenTabel", "ApiKeyTable", "LogsTable",
+    "ChatRecordTable", "UsageStatsTable", "UsageSummaryTable", "SystemConfigTable",
+]

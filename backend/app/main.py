@@ -5,8 +5,10 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 
-from app.api.router import router as api_router
+from app.router.router import router as api_router
 from app.core.database import init_database
+from app.utils.exception import register_exception_handlers
+from app.utils.response import success_response
 
 
 @asynccontextmanager
@@ -29,14 +31,17 @@ app = FastAPI(title="AgenticAPI", version="1.0.0", lifespan=lifespan)
 
 app.include_router(api_router)
 
+# 注册异常处理函数
+register_exception_handlers(app)
 
-@app.get("/hello")
+
+@app.get("/")
 def read_root():
     """
     测试接口
     :return: 测试消息
     """
-    return {"Message": "Hello World123"}
+    return success_response(message="Hello World")
 
 
 if __name__ == "__main__":

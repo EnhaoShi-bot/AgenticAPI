@@ -1,58 +1,85 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    CSS Variables — Design Tokens
-   定义全局 CSS 自定义属性，供所有样式文件引用
+   配色对齐 Arco Design（字节系企业级 SaaS / 火山引擎同源风格），仅亮色主题。
+   色值取自 Arco 默认亮色调色板，保证与组件库渲染结果完全一致。
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
   /* ── 颜色系统 ─────────────────────────────────────────────────────────── */
-  /* 品牌色 */
-  --color-primary: #2563eb;
-  --color-primary-light: #3b82f6;
-  --color-primary-dark: #1d4ed8;
+  /* 品牌色：arcoblue */
+  --color-primary: #165dff;
+  --color-primary-light: #4080ff;   /* arcoblue-5，悬停态 */
+  --color-primary-lighter: #e8f3ff; /* arcoblue-1，浅底选中态 */
+  --color-primary-dark: #0e42d2;    /* arcoblue-7，按压态 */
   --color-on-primary: #ffffff;
 
   /* 强调色 */
-  --color-accent: #f59e0b;
-  --color-accent-light: #fbbf24;
-  --color-accent-dark: #d97706;
+  --color-accent: #ff7d00;
+  --color-accent-light: #ff9a2e;
+  --color-accent-dark: #d25f00;
 
-  /* 成功 / 警告 / 错误 / 信息 */
-  --color-success: #059669;
-  --color-success-light: #d1fae5;
-  --color-warning: #d97706;
-  --color-warning-light: #fef3c7;
-  --color-error: #dc2626;
-  --color-error-light: #fee2e2;
-  --color-info: #0891b2;
-  --color-info-light: #cffafe;
+  /* 扩展强调色（Arco 调色板中的紫 / 青 / 金 / 橘红，用于分区配色与数据可视化，
+     主操作色仍是 primary，这些色只做"标识与区分"，不承载交互语义） */
+  --color-violet: #722ed1;
+  --color-violet-lighter: #f5e8ff;
+  --color-cyan: #14c9c9;
+  --color-cyan-lighter: #e8fffb;
+  --color-gold: #f7ba1e;
+  --color-gold-lighter: #fffce8;
+  --color-vermilion: #f77234;
+  --color-vermilion-lighter: #ffece8;
 
-  /* 中性色 */
+  /* 成功 / 警告 / 错误 / 信息（Arco 功能色） */
+  --color-success: #00b42a;
+  --color-success-light: #e8ffea;
+  --color-warning: #ff7d00;
+  --color-warning-light: #fff7e8;
+  --color-error: #f53f3f;
+  --color-error-light: #ffece8;
+  --color-info: #165dff;
+  --color-info-light: #e8f3ff;
+
+  /* 中性色（Arco gray 调色板，序号越大越深） */
   --color-white: #ffffff;
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
-  --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
+  --color-gray-50: #f7f8fa;
+  --color-gray-100: #f2f3f5;
+  --color-gray-200: #e5e6eb;
+  --color-gray-300: #c9cdd4;
+  --color-gray-400: #a9aeb8;
+  --color-gray-500: #86909c;
+  --color-gray-600: #6b7785;
+  --color-gray-700: #4e5969;
+  --color-gray-800: #272e3b;
+  --color-gray-900: #1d2129;
   --color-black: #000000;
 
   /* 语义色 */
   --color-text: var(--color-gray-900);
-  --color-text-secondary: var(--color-gray-600);
-  --color-text-muted: var(--color-gray-400);
+  --color-text-secondary: var(--color-gray-700);
+  --color-text-muted: var(--color-gray-500);
   --color-bg: var(--color-white);
   --color-bg-secondary: var(--color-gray-50);
+  /* 页面布局底色：控制台 / 文档等内容区背景 */
+  --color-bg-layout: var(--color-gray-100);
   --color-border: var(--color-gray-200);
   --color-border-hover: var(--color-gray-300);
 
   /* ── 字体系统 ─────────────────────────────────────────────────────────── */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  /* 三种字体角色（网络字体在 styles/index.css 顶部自托管引入）：
+     - sans   正文：拉丁用 Public Sans，中文按序回落本地黑体（HarmonyOS Sans SC
+              → MiSans → PingFang → 雅黑），拉丁字形与中文字形各自取最优；
+     - display 展示：品牌字与大标题。字体栈按字符自动分工——拉丁字母取
+              Playfair Display（高对比英文衬线），中文汉字跳过它落到
+              思源宋体 Noto Serif SC，本地再回落宋体链；中英文同为衬线、
+              气质统一，无需按语言手写 class；
+     - mono   等宽：代码、密钥、价格、统计数值，用 JetBrains Mono。 */
+  --font-sans: 'Public Sans Variable', 'Public Sans', 'HarmonyOS Sans SC', 'MiSans',
+    'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', system-ui, -apple-system,
+    'Segoe UI', Arial, sans-serif;
+  --font-display: 'Playfair Display Variable', 'Playfair Display', 'Noto Serif SC',
+    'Source Han Serif SC', 'Songti SC', 'SimSun', serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace,
+    'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 
   /* 字号阶梯 */
   --text-xs: 0.75rem; /* 12px */
@@ -93,22 +120,19 @@
   --space-20: 5rem; /* 80px */
   --space-24: 6rem; /* 96px */
 
-  /* ── 圆角 ─────────────────────────────────────────────────────────────── */
-  --radius-sm: 0.25rem; /* 4px */
-  --radius-md: 0.5rem; /* 8px */
-  --radius-lg: 0.75rem; /* 12px */
-  --radius-xl: 1rem; /* 16px */
-  --radius-2xl: 1.5rem; /* 24px */
+  /* ── 圆角（对齐 Arco：控件 2px，容器 4-8px） ──────────────────────────── */
+  --radius-sm: 2px; /* 输入框、按钮等控件 */
+  --radius-md: 4px; /* 小卡片、标签 */
+  --radius-lg: 6px; /* 卡片、弹层 */
+  --radius-xl: 8px; /* 大容器 */
+  --radius-2xl: 12px; /* 营销区块 */
   --radius-full: 9999px;
 
-  /* ── 阴影 ─────────────────────────────────────────────────────────────── */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  /* ── 阴影（Arco 阴影规范） ────────────────────────────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(29, 33, 41, 0.06);
+  --shadow-md: 0 4px 10px rgba(31, 35, 41, 0.1);
+  --shadow-lg: 0 8px 20px rgba(31, 35, 41, 0.1);
+  --shadow-xl: 0 12px 32px 4px rgba(31, 35, 41, 0.1);
 
   /* ── 过渡 ─────────────────────────────────────────────────────────────── */
   --transition-fast: 150ms ease;
@@ -121,4 +145,10 @@
   --container-lg: 1024px;
   --container-xl: 1280px;
   --container-2xl: 1536px;
+
+  /* ── 页面骨架 ─────────────────────────────────────────────────────────── */
+  /* 顶部导航高度（App.vue 主内容区用它计算视口剩余高度） */
+  --layout-header-height: 56px;
+  /* 控制台侧边栏宽度 */
+  --layout-sidebar-width: 208px;
 }

@@ -12,6 +12,12 @@ async def get_all(db: AsyncSession) -> list[dict]:
     return [dict(r) for r in results.mappings().all()]
 
 
+async def get_all_names(db: AsyncSession) -> list[str]:
+    """获取全量渠道名列表（公开数据，不含 api_key 等敏感字段）"""
+    results = await db.execute(text("SELECT channel_name FROM llm_channels ORDER BY id"))
+    return [r["channel_name"] for r in results.mappings().all()]
+
+
 async def get_id_by_name(db: AsyncSession, channel_name: str) -> int | None:
     """按渠道名称查询 id，不存在返回 None"""
     result = await db.execute(
@@ -20,6 +26,16 @@ async def get_id_by_name(db: AsyncSession, channel_name: str) -> int | None:
     )
     row = result.mappings().first()
     return row["id"] if row else None
+
+
+async def get_by_name(db: AsyncSession, channel_name: str) -> dict | None:
+    """按渠道名称查询整行（原始行字典，中转链路用）"""
+    result = await db.execute(
+        text("SELECT * FROM llm_channels WHERE channel_name = :channel_name LIMIT 1"),
+        {"channel_name": channel_name},
+    )
+    row = result.mappings().first()
+    return dict(row) if row else None
 
 
 async def get_existing_names(db: AsyncSession, names: list[str]) -> set[str]:
