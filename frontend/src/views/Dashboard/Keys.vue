@@ -5,8 +5,8 @@
     <header class="page-head">
       <h2>API 秘钥</h2>
       <p class="page-head-desc">
-        调用中转接口时，在请求头携带 Authorization: Bearer sk-xxx。
-        接口地址为 POST http://localhost:2027/v1/chat/completions（OpenAI Chat 兼容格式）。
+        调用中转接口时，请在请求头携带 Authorization: Bearer sk-xxx。
+        接口地址为 POST {{ siteStore.chatCompletionsUrl }}（OpenAI Chat 兼容格式）。
       </p>
     </header>
 
@@ -16,7 +16,9 @@
         <a-input v-model="newName" placeholder="密钥备注名，如：我的测试脚本" :max-length="50" allow-clear
                  :style="{width: 320}" @press-enter="handleCreate"/>
         <a-button type="primary" :loading="creating" :disabled="keys.length >= MAX_KEYS" @click="handleCreate">
-          <template #icon><icon-plus/></template>
+          <template #icon>
+            <icon-plus/>
+          </template>
           创建密钥（{{ keys.length }}/{{ MAX_KEYS }}）
         </a-button>
       </div>
@@ -30,6 +32,8 @@
           :bordered="{wrapper: true}"
           :pagination="false"
           class="keys-table"
+          column-resizable
+          size="small"
       >
         <template #name="{ record }">
           {{ record.name }}
@@ -47,9 +51,6 @@
           {{ record.lastUsedTime ? formatTime(record.lastUsedTime) : '未使用' }}
         </template>
         <template #operations="{ record }">
-          <a-button type="text" size="small" @click="handleToggle(record)">
-            {{ record.status ? '禁用' : '启用' }}
-          </a-button>
           <a-button type="text" size="small" status="danger" @click="handleDelete(record)">删除</a-button>
         </template>
       </a-table>
@@ -65,7 +66,11 @@ import type {TableColumnData} from '@arco-design/web-vue'
 import {getKeys, createKey, updateKey, deleteKey} from '@/api/keys'
 import type {apiKeyItem} from '@/api/keys'
 import {getErrorMessage} from '@/api/request'
+import {useSiteStore} from '@/stores/site'
 import {confirmDialog} from '@/utils/feedback'
+
+// 对外中转接口地址（来自站点配置，随部署地址自动变化）
+const siteStore = useSiteStore()
 
 const MAX_KEYS = 5
 const keys = ref<apiKeyItem[]>([])
@@ -73,8 +78,8 @@ const newName = ref('')
 const creating = ref(false)
 
 const columns: TableColumnData[] = [
-  {title: 'ID', dataIndex: 'id', width: 60},
-  {title: '备注名', dataIndex: 'name', minWidth: 140},
+  {title: 'ID', dataIndex: 'id', width: 1},
+  {title: '备注名', dataIndex: 'name', minWidth: 100},
   {title: '密钥', slotName: 'key', minWidth: 240},
   {title: '状态', slotName: 'status', width: 90, align: 'center'},
   {title: '创建时间', slotName: 'createTime', width: 170},
@@ -82,7 +87,7 @@ const columns: TableColumnData[] = [
   {title: '操作', slotName: 'operations', width: 130},
 ]
 
-const formatTime = (time: string | null) => (time ? time.replace('T', ' ').slice(0, 19) : '-')
+const formatTime = (time: string | null) => (time ? time.slice(0, 10) : '-')
 
 async function load() {
   try {
@@ -142,13 +147,13 @@ onMounted(load)
 
 <style scoped>
 .keys-page {
-  padding: var(--space-5) var(--space-6);
+  padding: var(--space-4) var(--space-5);
 }
 
 .create-row {
   display: flex;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
 }
 
 .keys-table {

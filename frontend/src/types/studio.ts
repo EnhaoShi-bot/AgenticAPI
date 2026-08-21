@@ -15,6 +15,12 @@ export interface studioUsage {
     elapsedMs: number
 }
 
+/** 联网搜索事件（后端 agent 工具循环期间推送，随消息持久化） */
+export interface studioSearchEvent {
+    query: string
+    status: 'running' | 'done'
+}
+
 /** 对话消息 */
 export interface studioMessage {
     id: string
@@ -24,6 +30,8 @@ export interface studioMessage {
     reasoning?: string
     /** 用户消息携带的图片 */
     images?: studioImage[]
+    /** 联网搜索记录（开启搜索开关时后端推送） */
+    searches?: studioSearchEvent[]
     /** token 用量（回答完成后回填） */
     usage?: studioUsage
     /** 生成失败时的错误信息 */

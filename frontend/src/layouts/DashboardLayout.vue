@@ -46,7 +46,7 @@ const isActive = (path: string) => {
 // - 渠道/运营/用户：仅管理员可见
 // - 兑换/安全：功能尚未实现，暂时隐藏
 const visibleDashItems = computed(() => {
-  const adminPaths = ['/dashboard/channels', '/dashboard/operations', '/dashboard/userlist']
+  const adminPaths = ['/dashboard/channels', '/dashboard/operations', '/dashboard/userlist', '/dashboard/redemptioncodes', '/dashboard/security']
   return dashItems.filter(item => {
     if (item.to === '/dashboard/overview' || item.to === '/dashboard/keys') return true
     if (adminPaths.includes(item.to)) return userStore.isAdmin

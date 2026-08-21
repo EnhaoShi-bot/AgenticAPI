@@ -150,5 +150,5 @@
   /* 顶部导航高度（App.vue 主内容区用它计算视口剩余高度） */
   --layout-header-height: 56px;
   /* 控制台侧边栏宽度 */
-  --layout-sidebar-width: 208px;
+  --layout-sidebar-width: 150px;
 }

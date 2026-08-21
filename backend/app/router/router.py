@@ -2,9 +2,10 @@
 
 from fastapi import APIRouter
 
-from app.router import channels, models, operations, user, keys, admin, relay, monitor, studio
+from app.router import channels, models, operations, user, keys, admin, relay, monitor, studio, site
 
 router = APIRouter()
+router.include_router(site.router)  # 站点公开配置（对外中转地址等，前端展示用）
 router.include_router(models.router)  # 和模型列表相关接口
 router.include_router(channels.router)  # 和渠道列表相关接口
 router.include_router(operations.router)  # 和上游渠道运维相关接口

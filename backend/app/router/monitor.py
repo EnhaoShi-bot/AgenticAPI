@@ -63,6 +63,7 @@ def _log_dict(row: dict) -> dict:
 
 
 def _normalize_page(page: int, pageSize: int) -> tuple[int, int]:
+    """归一化分页参数"""
     if page < 1:
         page = 1
     if pageSize < 1 or pageSize > 100:

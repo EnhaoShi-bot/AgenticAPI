@@ -3,7 +3,7 @@
 import json
 
 from app.core.config import DATA_DIR
-from app.services.upstream import bohr, stepfun, volcengine
+from app.services.upstream import bohr, stepfun, volcengine, zai
 from app.utils.token_utils import get_token_expiry
 
 OPS_JSON_PATH = DATA_DIR / "operations_config.json"
@@ -26,7 +26,7 @@ def _save_raw(name: str, data) -> None:
 def get_operations(refresh_channel: str = "all") -> dict:
     """
     获取上游运维数据
-    :param refresh_channel: 刷新的渠道，可选值为 "vol"、"bohr"、"stepfun" 或 "all"
+    :param refresh_channel: 刷新的渠道，可选值为 "vol"、"bohr"、"stepfun"、"zai" 或 "all"
     """
     re_dict = {
         "status": {},
@@ -34,6 +34,7 @@ def get_operations(refresh_channel: str = "all") -> dict:
         "vol_usage": {},
         "bohr_usage": {},
         "stepfun_usage": {},
+        "zai_usage": {},
     }
 
     operation_dict = _load_ops_config()
@@ -64,6 +65,14 @@ def get_operations(refresh_channel: str = "all") -> dict:
         if result["raw"] is not None:
             _save_raw("stepfun", result["raw"])
 
+    # 【4】智谱 GLM Coding Plan 用量
+    if refresh_channel in ("zai", "all"):
+        result = zai.fetch_zai_usage(operation_dict)
+        re_dict["status"]["zai"] = result["status"]
+        re_dict["zai_usage"] = result["usage"]
+        if result["raw"] is not None:
+            _save_raw("zai", result["raw"])
+
     # 获取 token 过期时间
     re_dict["token_expiry"] = get_token_expiry(operation_dict)
     return re_dict
@@ -74,6 +83,7 @@ def upload_settings(
     instance_id: str,
     step_token: str,
     step_webid: str,
+    zai_authorization: str,
 ) -> dict:
     """更新上游运维凭证到 operations_config.json"""
     try:
@@ -98,6 +108,9 @@ def upload_settings(
     if len(step_webid) > 5:
         data["stepfun_webid"] = step_webid
         message = message + "stepfun webid已更新；"
+    if len(zai_authorization) > 5:
+        data["ZAI_ANTHORIZATION"] = zai_authorization
+        message = message + "ZAI authorization已更新；"
 
     # 保存文件
     with open(OPS_JSON_PATH, "w", encoding="utf-8") as f:

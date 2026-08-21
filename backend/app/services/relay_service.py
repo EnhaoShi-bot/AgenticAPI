@@ -64,10 +64,10 @@ def compute_cost(model: dict, usage: dict) -> tuple[Decimal, int, int, int]:
     else:
         billable_prompt = max(prompt_tokens - cache_tokens, 0)
         cost = (
-            Decimal(billable_prompt) * Decimal(str(model.get("input_price") or 0))
-            + Decimal(cache_tokens) * Decimal(str(model.get("cache_price") or 0))
-            + Decimal(completion_tokens) * Decimal(str(model.get("output_price") or 0))
-        ) / Decimal(1_000_000)
+                       Decimal(billable_prompt) * Decimal(str(model.get("input_price") or 0))
+                       + Decimal(cache_tokens) * Decimal(str(model.get("cache_price") or 0))
+                       + Decimal(completion_tokens) * Decimal(str(model.get("output_price") or 0))
+               ) / Decimal(1_000_000)
 
     # 金额统一保留 6 位小数（与余额字段精度一致）
     return cost.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP), prompt_tokens, completion_tokens, cache_tokens
@@ -82,9 +82,47 @@ def _ordered_channels(model_name: str, channels: list[str]) -> list[str]:
     return channels[start:] + channels[:start]
 
 
+async def resolve_target(
+        db: AsyncSession,
+        payload: dict,
+        user: UserTabel,
+        *,
+        source: str = "relay",
+) -> tuple[dict, list[str]]:
+    """
+    请求前置校验与渠道解析（中转主流程与工坊 agent 循环共用）：
+    模型校验 → 分组权限 → 余额校验（工坊跳过）→ 渠道列表解析。
+
+    :return: (模型配置 dict, 渠道名列表)，校验不通过时抛 RelayError
+    """
+    model_name = payload.get("model")
+    if not model_name or not isinstance(model_name, str):
+        raise RelayError(400, "请求体缺少 model 字段")
+    model = await model_crud.get_by_name(db, model_name)
+    if not model or not model.get("status"):
+        raise RelayError(404, f"模型 {model_name} 不存在或已停用", "invalid_request_error")
+
+    # 分组权限：free 用户只能调用 free 分组模型，vip 可调用全部
+    if model.get("model_group") != "free" and user.user_group != "vip":
+        raise RelayError(403, f"当前用户分组（{user.user_group}）无权调用模型 {model_name}", "access_denied")
+
+    # 余额校验（余额小于等于 0 时拒绝调用；实际扣费在调用成功后）
+    # 工坊调用免费，跳过此检查（访客余额为 0 也可使用）
+    if source != "studio" and user.balance <= 0:
+        raise RelayError(402, "账户余额不足，请联系管理员充值", "insufficient_quota")
+
+    channel_names = parse_json_list(model.get("channels"))
+    if not channel_names:
+        raise RelayError(502, f"模型 {model_name} 未绑定可用渠道", "api_error")
+    return model, channel_names
+
+
 async def chat_completions(
-    db: AsyncSession, payload: dict, user: UserTabel,
-    api_key_id: int | None = None, *, source: str = "relay",
+        db: AsyncSession,
+        payload: dict,
+        user: UserTabel,
+        api_key_id: int | None = None, *,
+        source: str = "relay",
 ):
     """
     中转主流程。返回 FastAPI Response（JSON 或 SSE 流）。
@@ -97,33 +135,22 @@ async def chat_completions(
     """
     start_ms = time.time()
 
-    # ── 1. 模型校验 ──
-    model_name = payload.get("model")
-    if not model_name or not isinstance(model_name, str):
-        raise RelayError(400, "请求体缺少 model 字段")
-    model = await model_crud.get_by_name(db, model_name)
-    if not model or not model.get("status"):
-        raise RelayError(404, f"模型 {model_name} 不存在或已停用", "invalid_request_error")
+    # ── 模型校验 / 分组权限 / 余额校验 / 渠道解析（共用入口） ──
+    model, channel_names = await resolve_target(db, payload, user, source=source)
 
-    # ── 2. 分组权限：free 用户只能调用 free 分组模型，vip 可调用全部 ──
-    if model.get("model_group") != "free" and user.user_group != "vip":
-        raise RelayError(403, f"当前用户分组（{user.user_group}）无权调用模型 {model_name}", "access_denied")
-
-    # ── 3. 余额校验（余额小于等于 0 时拒绝调用；实际扣费在调用成功后） ──
-    #    工坊调用免费，跳过此检查（访客余额为 0 也可使用）
-    if source != "studio" and user.balance <= 0:
-        raise RelayError(402, "账户余额不足，请联系管理员充值", "insufficient_quota")
-
-    # ── 4. 渠道解析与轮询 ──
-    channel_names = parse_json_list(model.get("channels"))
-    if not channel_names:
-        raise RelayError(502, f"模型 {model_name} 未绑定可用渠道", "api_error")
+    # 模型映射：upstream_name 非空且与对外名不同时，发往上游的 model 用上游名，
+    # 响应里的 model 再还原为对外名；未配置时整条链路原样透传，零开销
+    upstream_name = model.get("upstream_name") or ""
+    model_name = model.get("name") or ""
+    needs_mapping = bool(upstream_name) and upstream_name != model_name
 
     is_stream = bool(payload.get("stream"))
     upstream_body = dict(payload)
+    if needs_mapping:
+        upstream_body["model"] = upstream_name
     if is_stream:
         # 流式响应默认不返回用量，加上 include_usage 让上游在最后一个 chunk 带回 usage 供计费
-        upstream_body.setdefault("include_usage", True)
+        upstream_body.setdefault("stream_options", {}).setdefault("include_usage", True)
 
     last_error = "无可用渠道"
     for channel_name in _ordered_channels(model_name, channel_names):
@@ -167,6 +194,13 @@ async def chat_completions(
                 start_ms=start_ms, usage=data.get("usage") or {}, conversation=conversation,
                 is_stream=False, source=source,
             )
+            # 配置了映射时，把响应里的上游模型名还原为对外名再返回（仅替换 model 字段）
+            if needs_mapping and isinstance(data, dict) and data.get("model") is not None:
+                data["model"] = model_name
+                return Response(
+                    content=json.dumps(data, ensure_ascii=False).encode(),
+                    media_type="application/json",
+                )
             return Response(content=resp.content, media_type="application/json")
 
         # ── 流式：边转发边解析，流结束后计费 ──
@@ -188,7 +222,8 @@ async def chat_completions(
 
         return StreamingResponse(
             _stream_and_bill(db, resp, client, user, model, channel_name, api_key_id, start_ms,
-                             payload.get("messages"), source=source),
+                             payload.get("messages"), source=source, model_name=model_name,
+                             needs_mapping=needs_mapping),
             media_type="text/event-stream",
         )
 
@@ -196,9 +231,9 @@ async def chat_completions(
 
 
 async def _finalize_call(
-    db: AsyncSession, *, user: UserTabel, model: dict, channel_name: str,
-    api_key_id: int | None, start_ms: float, usage: dict, conversation: dict,
-    is_stream: bool = False, source: str = "relay",
+        db: AsyncSession, *, user: UserTabel, model: dict, channel_name: str,
+        api_key_id: int | None, start_ms: float, usage: dict, conversation: dict,
+        is_stream: bool = False, source: str = "relay",
 ) -> None:
     """
     调用成功后的统一收尾（非流式与流式共用）：
@@ -207,9 +242,10 @@ async def _finalize_call(
     token 数量无条件记入 logs / usage_stats / usage_summary；
     对话内容仅在模型开启 is_log 且 输入+输出 token ≤ 管理员阈值
     （system_config 的 chat_record_max_tokens，默认 5000）时记录，避免落库超长文本。
-    工坊调用（source="studio"）免费：不扣款、日志 cost 记 0、不写对话记录，统计照常。
+    工坊调用（source="studio"）免费：不扣款、日志 cost 记 0、必写对话记录，统计照常。
     """
     is_studio = source == "studio"
+
     cost, prompt_tokens, completion_tokens, cache_tokens = compute_cost(model, usage)
     duration_ms = int((time.time() - start_ms) * 1000)
     model_name = model.get("name")
@@ -222,8 +258,8 @@ async def _finalize_call(
         db, type="api", action="chat", user_id=user.id, username=user.username,
         detail=(f"工坊调用模型 {model_name}（流式，免费）" if is_stream and is_studio
                 else f"工坊调用模型 {model_name}（免费）" if is_studio
-                else f"中转调用模型 {model_name}（流式）" if is_stream
-                else f"中转调用模型 {model_name}"),
+        else f"中转调用模型 {model_name}（流式）" if is_stream
+        else f"中转调用模型 {model_name}"),
         model_name=model_name, channel_name=channel_name,
         prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
         cache_tokens=cache_tokens, cost=Decimal(0) if is_studio else cost, duration_ms=duration_ms,
@@ -245,50 +281,66 @@ async def _finalize_call(
         await db.rollback()
         print(f"[relay] 用量统计写入失败: {exc.__class__.__name__}: {exc}")
 
-    # ── 对话记录：工坊对话不写（监控页的对话数据仅统计中转接口调用），未开启 is_log 也直接返回 ──
-    if is_studio or not model.get("is_log"):
-        return
-    try:
-        threshold = await config_crud.get_chat_record_threshold(db)
-        if prompt_tokens + completion_tokens > threshold:
-            return
-        input_messages = conversation.get("input")
-        await chat_record_crud.insert_record(
-            db, user_id=user.id, username=user.username, model_name=model_name,
-            channel_name=channel_name,
-            input_content=json.dumps(input_messages, ensure_ascii=False) if isinstance(input_messages, list) else None,
-            reasoning_content=conversation.get("reasoning") or None,
-            output_content=conversation.get("output") or None,
-            prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
-            cache_tokens=cache_tokens, cost=cost, duration_ms=duration_ms,
-        )
-    except Exception as exc:
-        print(f"[relay] 对话记录写入失败: {exc.__class__.__name__}: {exc}")
+    # ── 对话记录：如果是在工坊中调用模型，或者该模型的is_log为True，那么才写对话记录 ──
+    if is_studio or model.get("is_log"):
+        try:
+            threshold = await config_crud.get_chat_record_threshold(db)
+            if prompt_tokens + completion_tokens > threshold:
+                return
+            input_messages = conversation.get("input")
+            await chat_record_crud.insert_record(
+                db, user_id=user.id, username=user.username, model_name=model_name,
+                channel_name=channel_name,
+                input_content=json.dumps(input_messages, ensure_ascii=False) if isinstance(input_messages,
+                                                                                           list) else None,
+                reasoning_content=conversation.get("reasoning") or None,
+                output_content=conversation.get("output") or None,
+                prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
+                cache_tokens=cache_tokens, cost=cost, duration_ms=duration_ms,
+            )
+        except Exception as exc:
+            print(f"[relay] 对话记录写入失败: {exc.__class__.__name__}: {exc}")
 
 
 async def _stream_and_bill(
-    db, resp, client, user: UserTabel, model: dict,
-    channel_name: str, api_key_id: int | None, start_ms: float, input_messages,
-    source: str = "relay",
+        db, resp, client, user: UserTabel, model: dict,
+        channel_name: str, api_key_id: int | None, start_ms: float, input_messages,
+        source: str = "relay", model_name: str = "", needs_mapping: bool = False,
 ):
     """
     流式转发生成器：原样转发上游 SSE 分块，同时按行解析 usage 与文本增量；
     流结束后统一收尾（计费 / 日志 / 统计 / 对话记录）。
 
+    needs_mapping=True 时，逐行解析每个 SSE 事件的 model 字段并替换为对外名后再转发，
+    使调用方看到的始终是对外模型名而非上游内部名。
+
     【注意】FastAPI 在流式响应发送完毕后才关闭 get_db 提供的会话，所以这里可以继续用 db。
     """
     usage: dict = {}
-    parts = {"reasoning": "", "output": ""}  # 逐块累积的推理与输出文本
+    parts = {"reasoning": "", "output": ""}  # 逐块累积的推理与输出文本增量
     line_buf = b""  # SSE 分块可能把一行 JSON 从中间切断，需要按行缓冲拼接
     try:
         async for chunk in resp.aiter_bytes():
             line_buf += chunk
-            while b"\n" in line_buf:
-                line, line_buf = line_buf.split(b"\n", 1)
-                _parse_sse_line(line, usage, parts)
-            yield chunk
+            if not needs_mapping:
+                # 未配置映射：原样转发分块，仅后台解析 usage/文本增量供计费与对话记录
+                while b"\n" in line_buf:
+                    line, line_buf = line_buf.split(b"\n", 1)
+                    _parse_sse_line(line, usage, parts)
+                yield chunk
+            else:
+                # 配置了映射：按完整行解析并替换 model 字段为对外名后再逐行转发
+                while b"\n" in line_buf:
+                    line, line_buf = line_buf.split(b"\n", 1)
+                    _parse_sse_line(line, usage, parts)
+                    yield _rewrite_sse_model(line, model_name) + b"\n"
+        # 流末尾可能残留一行未以换行结尾的内容
         if line_buf:
             _parse_sse_line(line_buf, usage, parts)
+            # needs_mapping 分支此前只转发了完整行，残余内容需补发；
+            # 未映射分支的残余字节已随各次 yield chunk 发出，不能重复发送
+            if needs_mapping:
+                yield _rewrite_sse_model(line_buf, model_name)
     finally:
         await resp.aclose()
         await client.aclose()
@@ -330,3 +382,25 @@ def _parse_sse_line(line: bytes, usage: dict, parts: dict) -> None:
             parts["reasoning"] += delta["reasoning_content"]
         if isinstance(delta.get("content"), str):
             parts["output"] += delta["content"]
+
+
+def _rewrite_sse_model(line: bytes, model_name: str) -> bytes:
+    """把一条 SSE data 行里的 model 字段替换为对外名后返回；非 data 行或解析失败则原样返回。
+
+    OpenAI SSE 的每个事件 JSON 都带 model 字段（上游实际模型名），配置了模型映射时需逐行
+    改写为对外名，调用方才不会看到上游内部模型名。空行、注释行、data: [DONE] 与非法 JSON
+    原样返回，避免破坏流。
+    """
+    if not line.startswith(b"data:"):
+        return line
+    payload = line[5:].strip()
+    if not payload or payload == b"[DONE]":
+        return line
+    try:
+        obj = json.loads(payload)
+    except Exception:
+        return line
+    if not isinstance(obj, dict) or "model" not in obj:
+        return line
+    obj["model"] = model_name
+    return b"data: " + json.dumps(obj, ensure_ascii=False).encode()

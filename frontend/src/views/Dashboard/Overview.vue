@@ -4,18 +4,17 @@
   <div class="overview-page">
     <header class="page-head">
       <h2>概览</h2>
-      <p class="page-head-desc">查看账户信息与余额，修改个人资料</p>
     </header>
 
     <!-- 账户资产卡片 -->
     <div class="stat-cards">
       <div class="stat-card stat-accent-green">
         <div class="stat-label">账户余额（元）</div>
-        <div class="stat-value stat-value-brand">{{ info?.balance ?? '0.000000' }}</div>
+        <div class="stat-value stat-value-brand">{{ info?.balance ?? '0.0000' }}</div>
       </div>
       <div class="stat-card stat-accent-orange">
         <div class="stat-label">累计消费（元）</div>
-        <div class="stat-value">{{ info?.usedQuota ?? '0.000000' }}</div>
+        <div class="stat-value">{{ info?.usedQuota ?? '0.0000' }}</div>
       </div>
       <div class="stat-card stat-accent-violet">
         <div class="stat-label">用户分组</div>
@@ -126,7 +125,7 @@ onMounted(() => {
 <style scoped>
 .overview-page {
   padding: var(--space-5) var(--space-6);
-  max-width: 1080px;
+  max-width: 1280px;
 }
 
 .card-title {

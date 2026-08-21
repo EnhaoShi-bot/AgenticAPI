@@ -10,9 +10,10 @@ import {ref, computed, watch} from 'vue'
 import {useUserStore} from './user'
 import type {studioImage, studioMessage, studioSession, studioParams} from '@/types'
 import {DEFAULT_STUDIO_PARAMS} from '@/types'
+import {studioTitle} from '@/api/studio'
 
 // 会话数量上限（超出丢弃最旧的）
-const MAX_SESSIONS = 50
+const MAX_SESSIONS = 10
 // 自动标题截取长度
 const TITLE_LENGTH = 30
 
@@ -45,7 +46,7 @@ export const useStudioStore = defineStore('studio', () => {
 
     /** ═══════════ 持久化（localStorage，按用户隔离） ═══════════ */
 
-    // 当前数据归属的用户 id（拿到 userInfo 前先挂 guest 桶，拿到后会整体重载）
+        // 当前数据归属的用户 id（拿到 userInfo 前先挂 guest 桶，拿到后会整体重载）
     let currentUserId: number | string = 'guest'
     let saveTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -137,7 +138,9 @@ export const useStudioStore = defineStore('studio', () => {
             updateTime: Date.now(),
         }
         sessions.value.unshift(session)
-        if (sessions.value.length > MAX_SESSIONS) sessions.value.length = MAX_SESSIONS
+        if (sessions.value.length > MAX_SESSIONS){
+            sessions.value.length = MAX_SESSIONS // 把 length 设得比当前小，会直接删掉数组尾部多出来的元素。
+        }
         currentSessionId.value = session.id
         persistSessions()
         return session
@@ -192,9 +195,30 @@ export const useStudioStore = defineStore('studio', () => {
         session.messages.push(msg)
         session.updateTime = Date.now()
         if (msg.role === 'user' && session.messages.filter(m => m.role === 'user').length === 1) {
-            session.title = deriveTitle(msg.content)
+            const fallback = deriveTitle(msg.content)
+            session.title = fallback                              // 先占位，侧边栏不空白
+            generateTitle(session.id, msg.content, fallback)      // 异步换模型标题，不 await
         }
         scheduleSave()
+    }
+
+    /** 调后端概括标题；期间会话被删或标题被手动改过则放弃覆盖 */
+    /** 调后端概括标题；期间会话被删或标题被手动改过则放弃覆盖 */
+    async function generateTitle(sessionId: string, content: string, fallback: string) {
+        try {
+            const res = await studioTitle(content)
+            const title = res.data?.title
+            // 兜底标题与本地占位符是同一段文本，没必要覆盖；只有模型标题才替换占位
+            if (!title || res.data?.source === 'fallback') return
+            const session = sessions.value.find(s => s.id === sessionId)
+            // 两个竞态守卫：会话可能已删除；title !== fallback 说明用户已手动重命名
+            if (!session || session.title !== fallback) return
+            session.title = title          // ← 原 TITLE_MAX 守卫也在这轮一起删掉
+            session.updateTime = Date.now()
+            persistSessions()
+        } catch {
+            // 起标题失败静默忽略，保留截断占位标题
+        }
     }
 
     /** 当前会话最后一条 assistant 消息（流式回调的写入目标） */
@@ -213,6 +237,25 @@ export const useStudioStore = defineStore('studio', () => {
             msg.content += text
         } else {
             msg.reasoning = (msg.reasoning || '') + text
+        }
+        touchSession(currentSessionId.value)
+        scheduleSave()
+    }
+
+    /** 联网搜索状态（后端 agent 循环推送）：start 追加一条 running，end 把最后一条置为 done */
+    function updateLastAssistantSearch(query: string, running: boolean) {
+        const msg = lastAssistant()
+        if (!msg) return
+        if (!msg.searches) msg.searches = []
+        if (running) {
+            msg.searches.push({query, status: 'running'})
+        } else {
+            const last = msg.searches[msg.searches.length - 1]
+            if (last && last.status === 'running' && last.query === query) {
+                last.status = 'done'
+            } else {
+                msg.searches.push({query, status: 'done'})
+            }
         }
         touchSession(currentSessionId.value)
         scheduleSave()
@@ -263,6 +306,7 @@ export const useStudioStore = defineStore('studio', () => {
         // 消息读写
         addMessage,
         appendToLastAssistant,
+        updateLastAssistantSearch,
         setLastAssistantUsage,
         setLastAssistantError,
         removeLastAssistant,
@@ -272,3 +316,5 @@ export const useStudioStore = defineStore('studio', () => {
         reloadForUser,
     }
 })
+
+

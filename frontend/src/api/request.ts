@@ -15,8 +15,13 @@ export interface apiResponse<T = unknown> {
     data: T
 }
 
+/** 站内接口基地址：默认 /api，开发模式由 Vite 代理转发到后端（地址见 frontend/.env.development），
+ *  生产同源部署由反向代理（如 nginx）转发；前后端分域部署时可在前端 .env 配置 VITE_API_BASE 为后端完整地址。
+ *  工坊 SSE 等不走 axios 的请求也用它拼接，保证全站只有一个基地址配置。 */
+export const API_BASE: string = import.meta.env.VITE_API_BASE || '/api'
+
 const request = axios.create({
-    baseURL: '/api',
+    baseURL: API_BASE,
     timeout: 30000,
 })
 

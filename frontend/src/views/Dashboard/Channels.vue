@@ -7,15 +7,21 @@
       <h2>渠道配置</h2>
       <div class="action-bar">
         <a-input v-model="searchKeyword" placeholder="搜索渠道名称" allow-clear class="search-box">
-          <template #prefix><icon-search/></template>
+          <template #prefix>
+            <icon-search/>
+          </template>
         </a-input>
         <div class="action-buttons">
           <a-button :loading="loading" @click="fetchChannels">
-            <template #icon><icon-refresh/></template>
+            <template #icon>
+              <icon-refresh/>
+            </template>
             刷新
           </a-button>
           <a-button type="primary" @click="openAddDrawer">
-            <template #icon><icon-plus/></template>
+            <template #icon>
+              <icon-plus/>
+            </template>
             添加渠道
           </a-button>
         </div>
@@ -30,17 +36,15 @@
         row-key="channelName"
         :bordered="{wrapper: true}"
         :pagination="false"
+        size="small"
     >
       <template #status="{ record }">
         <!-- 单向绑定，切换时调接口，成功后才更新本地状态 -->
-        <a-switch :model-value="record.status" @change="(val: string | number | boolean) => handleStatusChange(record, Boolean(val))"/>
-      </template>
-      <template #usedRatio="{ record }">
-        {{ (Number(record.usedRatio) * 100).toFixed(1) }}%
+        <a-switch :model-value="record.status"
+                  @change="(val: string | number | boolean) => handleStatusChange(record, Boolean(val))"/>
       </template>
       <template #operations="{ record }">
         <a-button type="text" size="small" @click="openEditDrawer(record)">编辑</a-button>
-        <a-button type="text" size="small" status="danger" @click="handleDelete(record)">删除</a-button>
       </template>
     </a-table>
 
@@ -78,7 +82,8 @@
                   closable
                   size="small"
                   @close="channelForm.supportModels.splice(i, 1)"
-              >{{ m }}</a-tag>
+              >{{ m }}
+              </a-tag>
               <div class="tag-input-row">
                 <a-input
                     v-model="newModelInput"
@@ -88,7 +93,9 @@
                     @press-enter="addModelTag"
                 />
                 <a-button size="small" @click="addModelTag">
-                  <template #icon><icon-plus/></template>
+                  <template #icon>
+                    <icon-plus/>
+                  </template>
                 </a-button>
               </div>
             </div>
@@ -111,27 +118,25 @@
           <a-form-item label="超时（秒）">
             <a-input-number v-model="channelForm.timeout" :min="1" :max="600" :step="5" mode="button"/>
           </a-form-item>
-          <a-form-item label="用量比例">
-            <a-input-number
-                v-model="channelForm.usedRatio"
-                :min="0"
-                :max="1"
-                :step="0.05"
-                :precision="2"
-                mode="button"
-            />
-            <span class="unit">{{ (channelForm.usedRatio * 100).toFixed(0) }}%</span>
-          </a-form-item>
         </div>
       </a-form>
 
       <!-- 底部操作按钮 -->
       <template #footer>
         <div class="drawer-footer">
-          <a-button @click="drawerVisible = false">取消</a-button>
-          <a-button type="primary" :loading="submitting" @click="handleSubmit">
-            {{ dialogMode === 'add' ? '添加' : '保存' }}
+          <a-button
+              v-if="dialogMode === 'edit'"
+              type="text"
+              status="danger"
+              @click="handleDelete(channelForm)"
+          >删除渠道
           </a-button>
+          <div class="drawer-footer-actions">
+            <a-button @click="drawerVisible = false">取消</a-button>
+            <a-button type="primary" :loading="submitting" @click="handleSubmit">
+              {{ dialogMode === 'add' ? '添加' : '保存' }}
+            </a-button>
+          </div>
         </div>
       </template>
     </a-drawer>
@@ -150,12 +155,11 @@ import type {channelInfoSchema} from '@/types'
 /** ═══════════ 列表与筛选 ═══════════ */
 
 const columns: TableColumnData[] = [
-  {title: '渠道名称', dataIndex: 'channelName', minWidth: 150},
-  {title: '状态', slotName: 'status', width: 90, align: 'center'},
+  {title: '渠道名称', dataIndex: 'channelName', width: 150},
+  {title: '状态', slotName: 'status', width: 80, align: 'center'},
   {title: 'Base URL', dataIndex: 'baseUrl', minWidth: 220, ellipsis: true, tooltip: true},
   {title: '支持模型', dataIndex: 'supportModels', minWidth: 180, ellipsis: true, tooltip: true},
   {title: '超时(秒)', dataIndex: 'timeout', width: 100, align: 'center'},
-  {title: '用量比例', slotName: 'usedRatio', width: 110, align: 'center'},
   {title: '操作', slotName: 'operations', width: 130, align: 'center'},
 ]
 
@@ -331,6 +335,7 @@ const handleDelete = async (row: channelInfoSchema) => {
   try {
     await deleteChannel(row.channelName)
     Message.success('渠道删除成功')
+    drawerVisible.value = false
     fetchChannels()
   } catch (err) {
     console.error(err)
@@ -408,7 +413,13 @@ onMounted(() => {
 
 .drawer-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+
+.drawer-footer-actions {
+  display: flex;
   gap: var(--space-2);
 }
 </style>

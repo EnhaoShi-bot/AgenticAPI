@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import zhCN from '@arco-design/web-vue/es/locale/lang/zh-cn'
 import { useModelListStore } from '@/stores/modelList'
+import { useSiteStore } from '@/stores/site'
 import { useUserStore } from '@/stores/user'
 import AppHeader from '@/layouts/AppHeader.vue'
 
@@ -9,6 +10,13 @@ import AppHeader from '@/layouts/AppHeader.vue'
 const modelListStore = useModelListStore()
 onMounted(() => {
   modelListStore.loadTotalModels()
+})
+
+// 拉取站点公开配置（对外中转接口地址，来自后端 .env 的 PUBLIC_BASE_URL），
+// 秘钥页 / 模型示例面板等展示的接口地址都从这里取
+const siteStore = useSiteStore()
+onMounted(() => {
+  siteStore.loadSiteInfo()
 })
 
 // 若本地存有令牌，拉取一次用户信息（校验令牌有效性，并回填导航栏显示的昵称）

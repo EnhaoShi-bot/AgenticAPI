@@ -18,7 +18,13 @@ export const useModelListStore = defineStore('modelList', () => { // 当前pinia
     function loadTotalModels() {
         getModels()
             .then(res => {
-                totalModelList.value = res.data
+                // ✅ 在赋值前统一处理 inputPrice，截断为2位小数
+                totalModelList.value = res.data.map((model) => ({
+                    ...model,
+                    inputPrice: Math.floor(model.inputPrice * 100) / 100,
+                    outputPrice: Math.floor(model.outputPrice * 100) / 100,
+                    cachePrice: Math.floor(model.cachePrice * 100) / 100
+                }))
             })
             .catch(error => {
                 console.error('加载模型列表失败:', error)

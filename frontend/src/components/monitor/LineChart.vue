@@ -15,6 +15,8 @@ const props = defineProps<{
   xData: string[]
   /** 每条曲线一个元素 */
   series: lineSeriesSchema[]
+  /** 渲染器：canvas（默认）或 svg（矢量，在 transform/动画容器里不模糊） */
+  renderer?: 'canvas' | 'svg'
 }>()
 
 const chartRef = ref<HTMLDivElement>()
@@ -50,7 +52,7 @@ function handleResize() {
 }
 
 onMounted(() => {
-  chart = echarts.init(chartRef.value!)
+  chart = echarts.init(chartRef.value!, undefined, { renderer: props.renderer ?? 'canvas' })
   render()
   window.addEventListener('resize', handleResize)
 })

@@ -1,5 +1,5 @@
-/* 全局反馈工具：把 Arco 的 Modal.confirm 封装成 Promise，替代原 ElMessageBox.confirm 的用法 */
-import { Modal } from '@arco-design/web-vue'
+/* 全局反馈工具：确认弹窗与剪贴板复制的统一封装 */
+import { Message, Modal } from '@arco-design/web-vue'
 
 /** 确认弹窗，resolve(true) 表示用户点击了确认 */
 export function confirmDialog(
@@ -19,4 +19,10 @@ export function confirmDialog(
       onCancel: () => resolve(false),
     })
   })
+}
+
+/** 复制文本到剪贴板并轻提示 */
+export function copyText(text: string, tip = '已复制') {
+  navigator.clipboard.writeText(text)
+  Message.success(tip)
 }

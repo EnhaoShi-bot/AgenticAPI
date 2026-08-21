@@ -8,24 +8,26 @@
         <h2 class="sidebar-title">文档</h2>
       </div>
       <nav class="sidebar-nav">
-        <ul>
-          <li v-for="(doc, index) in docList" :key="doc.path">
-            <a 
-              :class="{ active: activeIndex === index }" 
-              @click="loadDoc(doc.path, index)"
-            >
-              <span class="nav-icon">
-                <svg v-if="activeIndex === index" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              </span>
-              <span class="nav-text">{{ doc.title }}</span>
-            </a>
-          </li>
-        </ul>
+        <div v-for="group in docGroups" :key="group.title" class="nav-group">
+          <div class="nav-group-title">{{ group.title }}</div>
+          <ul>
+            <li v-for="doc in group.docs" :key="doc.path">
+              <a
+                  :class="{ active: activePath === doc.path }"
+                  @click="loadDoc(doc.path)"
+              >
+          <span class="nav-icon">
+            <!-- 保持原来的两段 svg 不变 -->
+          </span>
+                <span class="nav-text">{{ doc.title }}</span>
+              </a>
+            </li>
+          </ul>
+        </div>
       </nav>
     </aside>
 
-    <!-- 右侧内容 -->
+    <!-- 中间内容 -->
     <main class="docs-content">
       <div class="content-wrapper">
         <div v-if="loading" class="loading-state">
@@ -33,59 +35,154 @@
           <p class="loading-text">加载中...</p>
         </div>
         <div v-else-if="!renderedContent" class="empty-state">
-          <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
           <h3 class="empty-title">选择一篇文档开始阅读</h3>
           <p class="empty-description">从左侧目录中选择一篇文档查看内容</p>
         </div>
         <div v-else class="prose" v-html="renderedContent"></div>
       </div>
     </main>
+
+    <!-- 右侧目录 -->
+    <aside class="docs-toc">
+      <div class="toc-header">
+        <span class="toc-title">目录</span>
+      </div>
+      <nav class="toc-nav">
+        <ul v-if="tocList.length">
+          <li v-for="item in tocList" :key="item.id"
+              :class="['toc-level-' + item.level, { active: activeHeading === item.id }]">
+            <a @click="scrollToHeading(item.id)">{{ item.text }}</a>
+          </li>
+        </ul>
+        <p v-else class="toc-empty">本文档无目录</p>
+      </nav>
+    </aside>
   </div>
 </template>
 
+
 <script setup lang="ts">
 import MarkdownIt from 'markdown-it'
-import { ref, onMounted } from 'vue'
+import {ref, onMounted, onBeforeUnmount, nextTick} from 'vue'
 
 const md = new MarkdownIt()
 const renderedContent = ref('')
-const activeIndex = ref<number | null>(null)
+const activePath = ref('')
 const loading = ref(false)
 
-const docList = [
-  { title: '项目介绍文档', path: '/docs/README.md' },
-  { title: '前端样式规范', path: '/docs/前端UI构建规范.md' },
-  { title: '后端接口规范', path: '/docs/后端API接口规范.md' },
-
+const docGroups = [
+  {
+    title: '用户文档',
+    docs: [
+      {title: 'API 调用文档', path: '/docs/API调用文档.md'},
+    ],
+  },
+  {
+    title: '开发者文档',
+    docs: [
+      {title: '项目介绍文档', path: '/docs/README.md'},
+      {title: '前端样式规范', path: '/docs/前端UI构建规范.md'},
+      {title: '后端接口规范', path: '/docs/后端API接口规范.md'},
+    ],
+  },
 ]
 
-async function loadDoc(path: string, index: number) {
+// loadDoc 去掉 index 参数
+async function loadDoc(path: string) {
   loading.value = true
-  activeIndex.value = index
+  activePath.value = path
   try {
     const res = await fetch(path)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const text = await res.text()
-    // 拦截 Vite SPA 回退：public 下不存在的文件会以 200 返回 index.html，
-    // 若放行会被 markdown-it 当正文渲染成整页 HTML 源码
     if (text.trimStart().startsWith('<!DOCTYPE')) {
       throw new Error('文档不存在或路径错误')
     }
     renderedContent.value = md.render(text)
+    loading.value = false          // 先关 loading，.prose 才会进入 DOM
+    await nextTick()               // 等 DOM 更新完再去查标题
+    buildToc()
+    setupScrollSpy()              // 滚动高亮：观察标题进入视口
   } catch (error) {
     renderedContent.value =
-      `<p style="color:var(--color-error)">文档加载失败：${path}<br/>${(error as Error).message}</p>`
+        `<p style="color:var(--color-error)">文档加载失败：${path}<br/>${(error as Error).message}</p>`
+    tocList.value = []
+    activeHeading.value = ''
+    tocObserver?.disconnect()
     console.error('加载文档失败:', error)
   } finally {
     loading.value = false
   }
+
 }
 
-onMounted(() => {
-  const firstDoc = docList[0]
-  if (firstDoc) {
-    loadDoc(firstDoc.path, 0)
+// ── 右侧目录（TOC） ──
+const tocList = ref<{ level: number; text: string; id: string }[]>([])
+
+/** 渲染完成后扫描 .prose 里的标题，生成目录并给每个标题打上锚点 id */
+function buildToc() {
+  const container = document.querySelector('.prose')
+  if (!container) {
+    tocList.value = [];
+    return
   }
+  const headings = Array.from(container.querySelectorAll('h1, h2, h3'))
+  tocList.value = headings.map((el, i) => {
+    const id = `heading-${i}`
+    el.id = id
+    return {
+      level: Number(el.tagName.slice(1)),
+      text: (el.textContent || '').trim(),
+      id,
+    }
+  })
+}
+
+/** 点击目录项 -> 平滑滚动到对应标题 */
+function scrollToHeading(id: string) {
+  document.getElementById(id)?.scrollIntoView({behavior: 'smooth', block: 'start'})
+}
+
+// ── 滚动高亮：当前可视区最靠上的标题即激活项 ──
+const activeHeading = ref('')
+let tocObserver: IntersectionObserver | null = null
+
+function setupScrollSpy() {
+  tocObserver?.disconnect()
+  const root = document.querySelector('.docs-content') as HTMLElement | null
+  if (!root || !tocList.value.length) return
+  // rootMargin 下边收 70%：仅当标题落在视口上 30% 区间才算"当前章节"
+  tocObserver = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+            .filter((e) => e.isIntersecting)
+            .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
+        if (visible[0]) activeHeading.value = (visible[0].target as HTMLElement).id
+      },
+      {root, rootMargin: '0px 0px -70% 0px', threshold: 0},
+  )
+  tocList.value.forEach((item) => {
+    const el = document.getElementById(item.id)
+    if (el && tocObserver) tocObserver.observe(el)
+  })
+}
+
+onBeforeUnmount(() => {
+  tocObserver?.disconnect()
+  tocObserver = null
+})
+
+onMounted(() => {
+  const first = docGroups[0]?.docs[0]
+  if (first) loadDoc(first.path)
 })
 </script>
 
@@ -454,5 +551,107 @@ onMounted(() => {
   .content-wrapper {
     padding: var(--space-6) var(--space-4);
   }
+
+  /* 窄屏隐藏目录 */
+  .docs-toc {
+    display: none;
+  }
+}
+
+.nav-group {
+  margin-bottom: var(--space-2);
+}
+
+.nav-group-title {
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   右侧目录
+   ═══════════════════════════════════════════════════════════ */
+.docs-toc {
+  width: 220px;
+  flex-shrink: 0;
+  background-color: var(--color-white);
+  border-left: 1px solid var(--color-border);
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.toc-header {
+  margin-bottom: var(--space-3);
+}
+
+.toc-title {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.toc-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.toc-nav li a {
+  display: block;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  transition: all var(--transition-fast);
+  line-height: 1.5;
+}
+
+/* 层级区分：缩进 + 字重 + 颜色深浅。
+   选择器写成 .toc-nav li.toc-level-N a 是为了抬高特异性，
+   否则上面 padding 简写（含 padding-left）特异性更高会盖掉这里的 padding-left */
+.toc-nav li.toc-level-1 a {
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+}
+
+.toc-nav li.toc-level-2 a {
+  padding-left: var(--space-5);
+}
+
+.toc-nav li.toc-level-3 a {
+  padding-left: var(--space-8);
+  color: var(--color-text-muted);
+}
+
+.toc-nav li a:hover {
+  color: var(--color-text);
+  background-color: var(--color-gray-100);
+}
+
+.toc-nav li.active a {
+  color: var(--color-primary);
+  border-left-color: var(--color-primary);
+  font-weight: var(--font-medium);
+  background-color: var(--color-primary-lighter);
+}
+
+.toc-empty {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* 滚动定位时标题不要紧贴顶部 */
+.prose :deep(h1),
+.prose :deep(h2),
+.prose :deep(h3) {
+  scroll-margin-top: var(--space-4);
 }
 </style>

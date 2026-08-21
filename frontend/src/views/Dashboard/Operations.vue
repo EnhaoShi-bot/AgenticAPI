@@ -81,6 +81,43 @@
           <plan-usage :usage="stepUsage"/>
         </template>
       </div>
+
+      <!-- 智谱 GLM Coding Plan -->
+      <div class="plan-card">
+        <div class="plan-card-head">
+          <div class="plan-card-title">
+            <span>智谱 GLM Coding Plan</span>
+            <a-tag size="small" color="blue">Lite订阅</a-tag>
+          </div>
+          <a-button type="text" size="small" @click="refreshZaiUsage">
+            <template #icon><icon-sync/></template>
+            刷新
+          </a-button>
+        </div>
+        <a class="plan-link" href="https://open.bigmodel.cn" target="_blank">
+          官方订阅链接<icon-launch/>
+        </a>
+        <div v-if="zaiUsage.status !== 'ok'" class="error-text">{{ zaiUsage.status }}</div>
+        <template v-else>
+          <plan-usage :usage="zaiUsage"/>
+        </template>
+      </div>
+
+      <!-- 占位卡片（预留扩展位） -->
+      <div class="plan-card plan-card-placeholder">
+        <div class="placeholder-body">
+          <icon-plus/>
+          <span>敬请期待</span>
+        </div>
+      </div>
+
+      <!-- 占位卡片（预留扩展位） -->
+      <div class="plan-card plan-card-placeholder">
+        <div class="placeholder-body">
+          <icon-plus/>
+          <span>敬请期待</span>
+        </div>
+      </div>
     </div>
 
     <!-- 设置凭证抽屉（替代原自绘侧边栏） -->
@@ -109,6 +146,16 @@
             <a-input v-model="settings.stepWebid" placeholder="可不填" @change="saveSettings"/>
           </a-form-item>
         </div>
+
+        <a-divider/>
+
+        <!-- 智谱 -->
+        <div class="settings-section">
+          <h4>智谱 GLM Coding Plan</h4>
+          <a-form-item label="Authorization">
+            <a-input-password v-model="settings.zaiAuthorization" placeholder="浏览器请求头里的 Authorization 值（不带 Bearer）" @change="saveSettings"/>
+          </a-form-item>
+        </div>
       </a-form>
 
       <template #footer>
@@ -131,7 +178,8 @@ import type {
   cookieSettings,
   volUsageData,
   bohrUsageData,
-  stepfunUsageData
+  stepfunUsageData,
+  zaiUsageData
 } from '@/types'
 
 /* ═══════════════════════ 用量卡片公共部分（5小时/周/月进度条） ═══════════════════════ */
@@ -152,7 +200,7 @@ const planWindowRow = defineComponent({
       if (!props.window.quota) {
         return h('div', {class: 'plan-row plan-row-none'}, `无${props.label}限额`)
       }
-      const percent = Math.min(100, (props.window.used / props.window.quota) * 100)
+      const percent = Math.min(1, (props.window.used / props.window.quota) * 1)
       return h('div', {class: 'plan-row'}, [
         h('div', {class: 'plan-row-head'}, [
           h('span', {class: 'plan-row-label'}, props.label),
@@ -164,7 +212,7 @@ const planWindowRow = defineComponent({
           showText: false,
           percent,
           // 用量超过 80% 转橙色、95% 转红色预警
-          color: percent >= 95 ? '#F53F3F' : percent >= 80 ? '#FF7D00' : undefined,
+          color: percent >= 0.95 ? '#F53F3F' : percent >= 0.8 ? '#FF7D00' : undefined,
         }),
       ])
     }
@@ -195,6 +243,7 @@ const settings = ref<cookieSettings>({
   instanceId: '',
   stepToken: '',
   stepWebid: '',
+  zaiAuthorization: '',
 })
 
 /* ═══════════════════════ 下面存储用量数据 ═══════════════════════ */
@@ -243,6 +292,21 @@ const stepUsage = reactive<stepfunUsageData>({
     quota: 0,
   },
 })
+const zaiUsage = reactive<zaiUsageData>({
+  status: "请刷新用量",
+  fiveHour: {
+    used: 0,
+    quota: 0,
+  },
+  weekly: {
+    used: 0,
+    quota: 0,
+  },
+  monthly: {
+    used: 0,
+    quota: 0,
+  },
+})
 
 /* ═══════════════════════ 初始化 ═══════════════════════ */
 
@@ -275,6 +339,7 @@ const uploadSettings = () => {
     instanceId: settings.value.instanceId,
     stepToken: settings.value.stepToken,
     stepWebid: settings.value.stepWebid,
+    zaiAuthorization: settings.value.zaiAuthorization,
   }).then(() => {
     Message.success('设置已上传')
   }).catch(err => {
@@ -343,6 +408,25 @@ const refreshStepUsage = () => {
   })
 }
 
+const refreshZaiUsage = () => {
+  getOperations('zai').then(res => {
+    if (res.data.status.zai === "200") {
+      zaiUsage.status = "ok"
+      zaiUsage.fiveHour.used = res.data.zai_usage.zaiFiveHourUsed
+      zaiUsage.weekly.used = res.data.zai_usage.zaiWeeklyUsed
+      zaiUsage.monthly.used = res.data.zai_usage.zaiMonthlyUsed
+      zaiUsage.fiveHour.quota = res.data.zai_usage.zaiFiveHourTotal
+      zaiUsage.weekly.quota = res.data.zai_usage.zaiWeeklyTotal
+      zaiUsage.monthly.quota = res.data.zai_usage.zaiMonthlyTotal
+    } else {
+      zaiUsage.status = "数据刷新错误: " + res.data.status.zai
+    }
+  }).catch(err => {
+    console.error(err)
+    zaiUsage.status = getErrorMessage(err, '数据刷新失败')
+  })
+}
+
 const refreshAllUsage = () => {
   loading.value = true
   getOperations('all').then(res => {
@@ -381,6 +465,18 @@ const refreshAllUsage = () => {
       stepUsage.monthly.quota = res.data.stepfun_usage.stepfunMonthlyTotal
     } else {
       stepUsage.status = "数据刷新错误: " + res.data.status.stepfun
+    }
+    // zai
+    if (res.data.status.zai === "200") {
+      zaiUsage.status = "ok"
+      zaiUsage.fiveHour.used = res.data.zai_usage.zaiFiveHourUsed
+      zaiUsage.weekly.used = res.data.zai_usage.zaiWeeklyUsed
+      zaiUsage.monthly.used = res.data.zai_usage.zaiMonthlyUsed
+      zaiUsage.fiveHour.quota = res.data.zai_usage.zaiFiveHourTotal
+      zaiUsage.weekly.quota = res.data.zai_usage.zaiWeeklyTotal
+      zaiUsage.monthly.quota = res.data.zai_usage.zaiMonthlyTotal
+    } else {
+      zaiUsage.status = "数据刷新错误: " + res.data.status.zai
     }
   }).catch(err => {
     console.error(err)
@@ -468,6 +564,23 @@ onMounted(() => {
 
 .plan-link:hover {
   text-decoration: underline;
+}
+
+/* 占位卡片（预留扩展位） */
+.plan-card-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+}
+
+.placeholder-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 
 /* 用量行（进度条），由渲染函数生成 */

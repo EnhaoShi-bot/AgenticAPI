@@ -10,33 +10,35 @@
         </div>
 
         <div class="sidebar-search">
-            <a-input v-model="keyword" placeholder="搜索会话标题或内容" allow-clear>
+            <a-input v-model="keyword" placeholder="搜索标题或内容" allow-clear>
                 <template #prefix><icon-search/></template>
             </a-input>
         </div>
 
         <div class="session-list">
+
             <div v-if="!filteredSessions.length" class="session-empty">暂无会话</div>
+
             <div v-for="session in filteredSessions" :key="session.id"
                  class="session-item" :class="{active: session.id === studioStore.currentSessionId}"
                  @click="studioStore.switchSession(session.id)">
                 <div class="session-info">
-                    <div class="session-title">{{ session.title }}</div>
+                    <div class="session-title" :title="session.title">{{ session.title }}</div>
                     <div class="session-meta">{{ session.modelName || '未选择模型' }} · {{ formatTime(session.updateTime) }}</div>
                 </div>
                 <div class="session-actions" @click.stop>
                     <a-tooltip content="重命名" position="top">
-                        <a-button type="text" size="mini" @click="openRename(session)">
+                        <a-button type="text" size="small" @click="openRename(session)">
                             <template #icon><icon-edit/></template>
                         </a-button>
                     </a-tooltip>
                     <a-tooltip content="导出 Markdown" position="top">
-                        <a-button type="text" size="mini" @click="handleExport(session)">
+                        <a-button type="text" size="small" @click="handleExport(session)">
                             <template #icon><icon-download/></template>
                         </a-button>
                     </a-tooltip>
                     <a-tooltip content="删除" position="top">
-                        <a-button type="text" size="mini" status="danger" @click="handleDelete(session)">
+                        <a-button type="text" size="small" status="danger" @click="handleDelete(session)">
                             <template #icon><icon-delete/></template>
                         </a-button>
                     </a-tooltip>

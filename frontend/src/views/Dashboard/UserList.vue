@@ -8,7 +8,9 @@
         <a-input v-model="keyword" placeholder="按用户名/昵称搜索" allow-clear :style="{width: 220}"
                  @press-enter="handleSearch" @clear="handleSearch"/>
         <a-button type="primary" @click="handleSearch">
-          <template #icon><icon-search/></template>
+          <template #icon>
+            <icon-search/>
+          </template>
           搜索
         </a-button>
         <a-button status="danger" :disabled="!selectedKeys.length" @click="handleBatchDelete()">
@@ -93,20 +95,20 @@ const pageSize = ref(10)
 const selectedKeys = ref<(string | number)[]>([])
 
 const columns: TableColumnData[] = [
-  {title: 'ID', dataIndex: 'id', width: 60},
-  {title: '用户名', slotName: 'username', minWidth: 130},
-  {title: '昵称', slotName: 'nickname', width: 100, ellipsis: true},
-  {title: '分组', slotName: 'userGroup', width: 100, align: 'center'},
-  {title: '管理员', slotName: 'isAdmin', width: 80, align: 'center'},
-  {title: '余额', slotName: 'balance', width: 130},
-  {title: '累计消费', slotName: 'usedQuota', width: 110, align: 'right'},
-  {title: '状态', slotName: 'status', width: 70, align: 'center'},
-  {title: '注册时间', slotName: 'createTime', width: 170},
-  {title: '最后登录', slotName: 'lastLoginTime', width: 170},
-  {title: '操作', slotName: 'operations', width: 120, fixed: 'right'},
+  {title: 'ID', dataIndex: 'id', width: 100, align: 'center'},
+  {title: '用户名', slotName: 'username', width: 130, align: 'center'},
+  {title: '昵称', slotName: 'nickname', width: 100, ellipsis: true, align: 'center'},
+  {title: '分组', slotName: 'userGroup', width: 130, align: 'center'},
+  {title: '管理员', slotName: 'isAdmin', width: 100, align: 'center'},
+  {title: '余额', slotName: 'balance', width: 200, align: 'center'},
+  {title: '累计消费', slotName: 'usedQuota', width: 200, align: 'right'},
+  {title: '状态', slotName: 'status', width: 100, align: 'center'},
+  {title: '注册时间', slotName: 'createTime', width: 170, align: 'center'},
+  {title: '最后登录', slotName: 'lastLoginTime', width: 170, align: 'center'},
+  {title: '操作', slotName: 'operations', width: 200, fixed: 'right', align: 'center'},
 ]
 
-const formatTime = (time: string | null) => (time ? time.replace('T', ' ').slice(0, 19) : '-')
+const formatTime = (time: string | null) => (time ? time.slice(0, 10) : '-')
 
 function onSelectionChange(rowKeys: (string | number)[]) {
   selectedKeys.value = rowKeys

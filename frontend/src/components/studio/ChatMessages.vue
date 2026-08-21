@@ -18,11 +18,21 @@
 
                     <!-- 助手消息：左侧 markdown 渲染 -->
                     <div v-else class="bubble assistant-bubble">
+                        <!-- 联网搜索状态条：搜索中显示关键词，完成后显示累计次数 -->
+                        <div v-if="msg.searches?.length" class="search-status" :class="{searching: searchingQuery(msg) !== null}">
+                            <span v-if="searchingQuery(msg) !== null" class="search-spinner"></span>
+                            <icon-search v-else class="search-icon"/>
+                            <span v-if="searchingQuery(msg) !== null" class="search-text">
+                                正在联网搜索：{{ searchingQuery(msg) }}…
+                            </span>
+                            <span v-else class="search-text">已联网搜索 {{ msg.searches.length }} 次</span>
+                        </div>
+
                         <!-- 思维链（可折叠，默认展开） -->
                         <div v-if="msg.reasoning" class="reasoning-block">
                             <div class="reasoning-header" @click="toggleReasoning(msg.id)">
                                 <icon-right class="reasoning-arrow" :class="{collapsed: collapsedReasoning.has(msg.id)}"/>
-                                <span>思维过程</span>
+                                <span> 🧠 思考中 ...</span>
                             </div>
                             <pre v-show="!collapsedReasoning.has(msg.id)" class="reasoning-text">{{ msg.reasoning }}</pre>
                         </div>
@@ -37,8 +47,8 @@
                         <!-- 用量与操作 -->
                         <div v-if="msg.content || msg.error" class="message-footer">
                             <span v-if="msg.usage" class="message-usage">
-                                ↑{{ msg.usage.promptTokens }} ↓{{ msg.usage.completionTokens }} tokens
-                                · {{ (msg.usage.elapsedMs / 1000).toFixed(1) }}s
+                                输入tokens：{{ msg.usage.promptTokens }}  || 输出tokens：{{ msg.usage.completionTokens }} tokens
+                                 || 耗时 {{ (msg.usage.elapsedMs / 1000).toFixed(1) }}s
                             </span>
                             <span v-else></span>
                             <span class="message-actions">
@@ -97,6 +107,13 @@ function toggleReasoning(id: string) {
     } else {
         collapsedReasoning.add(id)
     }
+}
+
+/** ═══════════ 联网搜索状态 ═══════════ */
+/** 返回正在搜索的关键词；不在搜索中返回 null（用于状态条切换展示形态） */
+function searchingQuery(msg: studioMessage): string | null {
+    const running = msg.searches?.find(s => s.status === 'running')
+    return running ? running.query : null
 }
 
 /** ═══════════ 复制 ═══════════ */
@@ -209,6 +226,46 @@ function handleScroll() {
     background: var(--color-gray-100);
     border-top-left-radius: var(--radius-sm);
     width: 100%;
+}
+
+/* 联网搜索状态条：搜索中带旋转指示，完成后显示累计次数 */
+.search-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: var(--space-3);
+    padding: 5px 10px;
+    border: 1px solid var(--color-primary-light);
+    border-radius: var(--radius-md);
+    background: var(--color-primary-lighter);
+    color: var(--color-primary);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+}
+
+.search-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-icon {
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.search-spinner {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--color-primary-light);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: search-spin 0.8s linear infinite;
+}
+
+@keyframes search-spin {
+    to { transform: rotate(360deg); }
 }
 
 /* 思维链折叠块 */

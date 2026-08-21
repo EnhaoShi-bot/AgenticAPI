@@ -87,19 +87,23 @@ const handleUserCommand = (key: string | number | Record<string, unknown> | unde
           <a-button size="small" @click="userStore.openAuthDialog('login')">登录</a-button>
           <a-button type="primary" size="small" @click="userStore.openAuthDialog('register')">免费注册</a-button>
         </template>
+
+
         <template v-else>
           <a-dropdown trigger="click" @select="handleUserCommand">
+
             <a class="user-entry" href="javascript:void(0)">
               <a-avatar :size="26" class="user-avatar">{{ userStore.displayName.charAt(0) }}</a-avatar>
               <span class="user-name" :title="userStore.displayName">{{ userStore.displayName }}</span>
               <icon-down class="user-arrow"/>
             </a>
+
             <template #content>
-              <a-doption key="dashboard">
+              <a-doption value="dashboard">
                 <template #icon><icon-dashboard/></template>
                 控制台
               </a-doption>
-              <a-doption key="logout">
+              <a-doption value="logout">
                 <template #icon><icon-export/></template>
                 退出登录
               </a-doption>

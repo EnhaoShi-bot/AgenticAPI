@@ -18,8 +18,8 @@ export interface dashItem {
 export const navItems: navItem[] = [
     {id: '001', label: '首页', to: '/home'},
     {id: '002', label: '模型广场', to: '/models'},
-    {id: '003', label: '监控面板', to: '/monitor'},
-    {id: '004', label: '模型工坊', to: '/studio'},
+    {id: '003', label: '模型工坊', to: '/studio'},
+    {id: '004', label: '监控面板', to: '/monitor'},
     {id: '005', label: '控制台', to: '/dashboard'},
     {id: '006', label: '文档', to: '/docs'},
 ]

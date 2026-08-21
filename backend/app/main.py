@@ -6,6 +6,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from app.router.router import router as api_router
+from app.core.config import server_setting
 from app.core.database import init_database
 from app.utils.exception import register_exception_handlers
 from app.utils.response import success_response
@@ -45,4 +46,5 @@ def read_root():
 
 
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", host="127.0.0.1", port=2027)
+    # 监听地址与端口从 backend/.env 读取（SERVER_HOST / SERVER_PORT）
+    uvicorn.run("app.main:app", host=server_setting.SERVER_HOST, port=server_setting.SERVER_PORT)

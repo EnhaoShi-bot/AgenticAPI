@@ -3,8 +3,8 @@
 // 对话接口是 SSE 流式 + OpenAI 风格报文，与站内统一 {code, message, data} 格式不同，
 // 因此不走 axios 封装，改用 fetch 手动携带 Bearer 令牌并逐行解析 SSE；
 // 语音识别是普通 JSON 接口，直接复用统一 axios 实例。
-import request from './request'
-import { useUserStore } from '@/stores/user'
+import request, {API_BASE} from './request'
+import {useUserStore} from '@/stores/user'
 
 /** 多模态内容片段（图片 / 文本） */
 export type studioContentPart =
@@ -34,6 +34,8 @@ export interface studioStreamCallbacks {
     onChunk?: (text: string) => void
     /** 思维链增量（兼容 reasoning_content / thinking / reasoning 三种字段名） */
     onReasoning?: (text: string) => void
+    /** 联网搜索状态（后端 agent 循环的站内扩展事件：搜索开始/结束） */
+    onSearch?: (ev: {status: 'start' | 'end'; query: string; round: number}) => void
     /** 最后一个 chunk 携带的 token 用量 */
     onUsage?: (usage: { promptTokens: number; completionTokens: number }) => void
     /** 流结束（正常结束、收到 [DONE]、或用户主动停止） */
@@ -55,11 +57,11 @@ export async function streamStudioChat(
 
     let resp: Response
     try {
-        resp = await fetch('/api/studio/chat', {
+        resp = await fetch(`${API_BASE}/studio/chat`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                ...(userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {}),
+                ...(userStore.token ? {Authorization: `Bearer ${userStore.token}`} : {}),
             },
             body: JSON.stringify(body),
             signal,
@@ -114,6 +116,14 @@ export async function streamStudioChat(
             callbacks.onError?.(obj.error.message)
             return
         }
+        // 联网搜索状态事件（后端站内扩展字段，搜索开始/结束）
+        if (obj.agenticapi_search) {
+            const s = obj.agenticapi_search
+            if (s.status === 'start' || s.status === 'end') {
+                callbacks.onSearch?.({status: s.status, query: s.query ?? '', round: s.round ?? 1})
+            }
+            return
+        }
         // 最后一个 chunk 的用量
         if (obj.usage?.prompt_tokens != null) {
             callbacks.onUsage?.({
@@ -135,10 +145,10 @@ export async function streamStudioChat(
     }
 
     try {
-        for (;;) {
-            const { done, value } = await reader.read()
+        for (; ;) {
+            const {done, value} = await reader.read()
             if (done) break
-            buf += decoder.decode(value, { stream: true })
+            buf += decoder.decode(value, {stream: true})
             const lines = buf.split('\n')
             buf = lines.pop() || ''
             lines.forEach(handleLine)
@@ -156,5 +166,17 @@ export async function streamStudioChat(
 
 /** POST /studio/asr：录音 base64 交给后端代理 ASR，返回识别文本 */
 export function studioAsr(audio: string, format: string) {
-    return request.post<{ text: string }>('/studio/asr', { audio, format })
+    return request.post<{ text: string }>('/studio/asr', {audio, format})
+}
+
+/** POST /studio/title：把首条用户消息概括为短标题，响应带来源标记便于排查兜底 */
+export function studioTitle(content: string) {
+    return request.post<studioTitleResult>('/studio/title', {content})
+}
+
+/** POST /studio/title 的响应数据：标题 + 来源标记与思维链（调试用） */
+export interface studioTitleResult {
+    title: string
+    source: 'model' | 'fallback'
+    reasoning?: string
 }

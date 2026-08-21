@@ -1,10 +1,8 @@
 """用户 API 密钥表：对外中转接口的访问凭证（一个用户最多 5 个）"""
 
 from datetime import datetime
-
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
-
 from app.models.base import BaseModel
 
 

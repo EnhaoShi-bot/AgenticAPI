@@ -5,7 +5,7 @@
             <icon-robot/>
         </div>
         <h2 class="welcome-title">模型工坊</h2>
-        <p class="welcome-subtitle">选择模型，开始对话。支持联网搜索、图片与语音输入。</p>
+        <p class="welcome-subtitle">试试模型效果？点击下方建议，直接发送。</p>
 
         <div class="suggest-grid">
             <button v-for="item in suggestions" :key="item.title" class="suggest-card"

@@ -1,14 +1,15 @@
 """模型业务逻辑层"""
 
 import json
-
 from fastapi import HTTPException
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.crud import channel as channel_crud
 from app.crud import model as model_crud
 from app.schemas.model import ModelSchema
 from app.utils.json_utils import parse_json_list
+from app.crud import user as user_crud
+from app.core.config import server_setting
 
 
 async def _validate_channels(db: AsyncSession, names: list[str]) -> None:
@@ -108,3 +109,37 @@ async def remove_model(db: AsyncSession, model_name: str) -> None:
 
     if rowcount == 0:
         raise HTTPException(status_code=500, detail="删除模型失败，未影响任何记录")
+
+
+async def test_model(db: AsyncSession, model_name: str, user_id: int) -> dict:
+    """模型拨测，无需管理员权限，普通用户可调用，走公网接口，正常扣费、记录日志"""
+    api_key = await user_crud.get_api_key_by_user_id(db, user_id)
+    if not api_key:
+        raise HTTPException(status_code=400, detail="用户未绑定API密钥")
+
+    # 发起外部http请求（走本站对外中转接口，与真实调用方同链路：正常计费、记日志）
+    # 地址取自 backend/.env 的 PUBLIC_BASE_URL，部署到公网后无需改代码
+    url = f"{server_setting.RELAY_BASE_URL}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key.key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": model_name,
+        "messages": [
+            {"role": "user", "content": "请简单回复'OK'"}
+        ],
+        "stream": False
+    }
+
+    # 处理响应
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.post(url, headers=headers, json=payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"模型拨测失败: {e}")
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"模型响应失败: {response.text}")
+
+    return {"result": response.text}

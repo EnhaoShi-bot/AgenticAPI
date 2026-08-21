@@ -4,7 +4,7 @@ import type { cookieSettings } from '@/types'
 
 /**
  * 获取上游运维数据
- * @param refreshChannel 刷新的渠道：vol / bohr / stepfun / all
+ * @param refreshChannel 刷新的渠道：vol / bohr / stepfun / zai / all
  */
 export function getOperations(refreshChannel: string = 'all') {
     return request.get('/operations/get', { params: { refresh_channel: refreshChannel } })

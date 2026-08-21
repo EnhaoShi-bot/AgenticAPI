@@ -11,7 +11,7 @@ from app.router.deps import get_db
 from app.schemas.model import ModelSchema
 from app.services import model_service
 from app.crud import log as log_crud
-from app.utils.auth import get_current_admin
+from app.utils.auth import get_current_admin, get_current_user
 from app.utils.response import success_response
 
 router = APIRouter(prefix="/models", tags=["Models"])
@@ -37,6 +37,19 @@ async def add_model(
         detail=f"新增了模型 {new_model.name}",
     )
     return success_response(message="添加模型成功", data={"modelId": model_id})
+
+
+@router.get("/test/{model_name}")
+async def test_model(
+        model_name: str,
+        db: AsyncSession = Depends(get_db),
+        user=Depends(get_current_user),
+):
+    """模型拨测，无需管理员权限，普通用户可调用，走公网接口，正常扣费、记录日志"""
+
+    response = await model_service.test_model(db, model_name, user.id)
+
+    return success_response(message="模型响应成功", data=response)
 
 
 @router.put("/{model_name}")

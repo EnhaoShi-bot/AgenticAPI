@@ -119,6 +119,7 @@ async function runGeneration() {
             {
                 onChunk: t => studioStore.appendToLastAssistant('content', t),
                 onReasoning: t => studioStore.appendToLastAssistant('reasoning', t),
+                onSearch: s => studioStore.updateLastAssistantSearch(s.query, s.status === 'start'),
                 onUsage: u => studioStore.setLastAssistantUsage(u.promptTokens, u.completionTokens, Date.now() - startTime),
                 onError: msg => studioStore.setLastAssistantError(msg),
             },
@@ -186,8 +187,10 @@ async function handleRegenerate() {
     transition: width 0.25s ease;
 }
 
+
+/* 左侧会话列表面板 */
 .studio-aside.left {
-    width: 260px;
+    width: 270px;
     border-right: 1px solid var(--color-border);
 }
 
@@ -196,8 +199,9 @@ async function handleRegenerate() {
     border-right: none;
 }
 
+/* 右侧会话列表面板 */
 .studio-aside.right {
-    width: 300px;
+    width: 270px;
     border-left: 1px solid var(--color-border);
 }
 

@@ -37,11 +37,11 @@ async def insert(db: AsyncSession, model: dict) -> int:
         text(
             """
             INSERT INTO llm_models
-            (name, label, description, is_request_mode, per_request_price,
+            (name, upstream_name, label, description, is_request_mode, per_request_price,
              input_price, cache_price, output_price, model_group, is_pin,
              is_log, status, channels, context_length, max_tokens, support_vision,
              icon)
-            VALUES (:name, :label, :description, :is_request_mode, :per_request_price,
+            VALUES (:name, :upstream_name, :label, :description, :is_request_mode, :per_request_price,
                     :input_price, :cache_price, :output_price, :model_group, :is_pin,
                     :is_log, :status, :channels, :context_length, :max_tokens, :support_vision,
                     :icon)

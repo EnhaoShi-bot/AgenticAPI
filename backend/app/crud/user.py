@@ -6,7 +6,7 @@ from typing import Optional
 
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.crud import api_key as api_key_crud
 from app.models import UserTokenTabel
 from app.models.api_key import ApiKeyTable
 from app.models.user import UserTabel
@@ -115,6 +115,18 @@ async def get_user_by_token(db: AsyncSession, token: str) -> Optional[UserTabel]
     result = await db.execute(query)
     # scalars()把行结果转成ORM对象序列，取单条用 one_or_none()
     return result.scalars().one_or_none()
+
+
+async def get_api_key_by_user_id(db: AsyncSession, user_id: int) -> Optional[ApiKeyTable]:
+    """
+    获取一个当前用户的API KEY，没有就创建一个
+    """
+    query = select(ApiKeyTable).where(ApiKeyTable.user_id == user_id)
+    result = await db.execute(query)
+    key = result.scalars().all()
+    if not key:
+        key = await api_key_crud.create_key(db, user_id, name="默认密钥")
+    return key[0]
 
 
 # 创建访客账号：随机用户名/密码（访客自己也不知道密码，所以无法拿它去登录），is_guest=True

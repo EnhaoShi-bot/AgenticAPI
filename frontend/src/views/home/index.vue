@@ -12,13 +12,14 @@
       </div>
       <div class="slide-inner hero-inner">
         <p class="slide-eyebrow">AGENTIC API · 大模型中转站</p>
-        <h1 class="hero-title">让 Agent 管理你的<br/><span class="hero-title-key">每一个大模型 API</span></h1>
+        <h1 class="hero-title">由 Agent 自主运营维护的<br/><span class="hero-title-key">新一代智能 API 中转站</span>
+        </h1>
         <p class="hero-desc">
-          OpenAI 兼容接口 · 多渠道自动轮询 · 按量计费 · 用量可视
+          上游渠道自动巡检监测・下游 OpenAI 接口对外兼容
         </p>
         <div class="hero-actions">
-          <a-button type="primary" @click="handleStart">立即开始使用</a-button>
-          <a-button @click="goToModelsPage">查看模型广场</a-button>
+          <a-button type="primary" @click="goToModelsPage">查看模型广场</a-button>
+          <a-button @click="handleStart">立即开始使用</a-button>
         </div>
 
         <!-- 数据速览：等宽数字 + 分隔线，贴近控制台质感 -->
@@ -51,21 +52,22 @@
       <div class="slide-inner split">
         <div class="slide-copy">
           <p class="slide-eyebrow eyebrow-blue">01 · 模型广场</p>
-          <h2 class="slide-title">全站模型，一页尽览</h2>
-          <p class="slide-desc">
-            每个模型自带品牌图标、分组与三段式定价（输入 / 缓存 / 输出），
-            免费模型开箱即用，搜索直达目标模型。
-          </p>
+          <h2 class="slide-title">海量模型，低价调用</h2>
+          <p class="slide-desc">多款免费模型开箱即用，配套精细化用量监控。三段式定价（输入 / 缓存 /
+            输出），有效控制调用开销。</p>
           <a-button type="primary" @click="goToModelsPage">
             进入模型广场
-            <template #icon><icon-right/></template>
+            <template #icon>
+              <icon-right/>
+            </template>
           </a-button>
         </div>
         <div class="slide-visual">
           <div class="mock-card-grid">
-            <div v-for="m in showcaseModels" :key="m.name" class="mock-model-card">
+            <!-- 模型卡片：免费模型 -->
+            <div v-for="m in showFreeModels" :key="m.name" class="mock-model-card">
               <div class="mock-model-head">
-                <LobeIcon :name="m.icon" :fallback="m.name" :size="22"/>
+                <LobeIcon :name="m.icon" :fallback="m.name" :size="25"/>
                 <span class="mock-model-name">{{ m.name }}</span>
                 <span class="mock-model-tag" :class="m.group === 'free' ? 'tag-free' : 'tag-vip'">
                   {{ m.group === 'free' ? '免费' : 'VIP' }}
@@ -73,6 +75,22 @@
               </div>
               <div class="mock-model-price">
                 <span>输入 <b>¥{{ m.inputPrice }}</b></span>
+                <span>缓存 <b>¥{{ m.cachePrice }}</b></span>
+                <span>输出 <b>¥{{ m.outputPrice }}</b></span>
+              </div>
+            </div>
+            <!-- 模型卡片：付费模型 -->
+            <div v-for="m in showVipModels" :key="m.name" class="mock-model-card">
+              <div class="mock-model-head">
+                <LobeIcon :name="m.icon" :fallback="m.name" :size="25"/>
+                <span class="mock-model-name">{{ m.name }}</span>
+                <span class="mock-model-tag" :class="m.group === 'free' ? 'tag-free' : 'tag-vip'">
+                  {{ m.group === 'free' ? '免费' : 'VIP' }}
+                </span>
+              </div>
+              <div class="mock-model-price">
+                <span>输入 <b>¥{{ m.inputPrice }}</b></span>
+                <span>缓存 <b>¥{{ m.cachePrice }}</b></span>
                 <span>输出 <b>¥{{ m.outputPrice }}</b></span>
               </div>
             </div>
@@ -87,26 +105,40 @@
         <div class="slide-copy">
           <p class="slide-eyebrow eyebrow-violet">02 · 模型工坊</p>
           <h2 class="slide-title">先试效果，再上生产</h2>
-          <p class="slide-desc">
-            流式输出与思维链实时展示，参数随手调节，
-            选中的模型即是你线上一模一样的调用通道。
-          </p>
+          <p class="slide-desc">流式输出与思维链实时预览，参数灵活可调，所选模型即线上真实调用通道。</p>
           <a-button type="primary" @click="goToStudioPage">
             打开模型工坊
-            <template #icon><icon-right/></template>
+            <template #icon>
+              <icon-right/>
+            </template>
           </a-button>
         </div>
         <div class="slide-visual">
           <div class="mock-chat">
-            <div class="mock-chat-row mock-chat-user">用一句话解释什么是 API 中转</div>
+            <div class="mock-chat-row mock-chat-user">我在接入后想切换模型，需要修改业务代码吗？</div>
             <div class="mock-chat-row mock-chat-ai">
-              API 中转站把各大模型厂商的接口统一成一个入口，
-              你的应用只改一个 base_url<span class="mock-caret"></span>
+              <!-- 思维链折叠块：对齐工坊页面 .reasoning-block 的橙色配色 -->
+              <div class="mock-reasoning">
+                <div class="mock-reasoning-header">
+                  <icon-right class="mock-reasoning-arrow"/>
+                  <span>🧠 思考中 ...</span>
+                </div>
+                <div class="mock-reasoning-text">
+                  用户关注模型切换的代码侵入性。AgenticAPI 网关已实现 OpenAI
+                  协议全字段映射，鉴权绑定租户而非单一模型，核心请求零修改。但需排查两个边界：Function Calling schema
+                  格式是否兼容、目标模型 max_tokens 上限是否满足当前截断策略。结论：仅改 model 字段即可，附带兼容性提示。
+                </div>
+              </div>
+              <div class="mock-chat-text">
+                核心业务代码无需修改。只需将请求中的 <code>model</code> 参数替换为目标模型名，鉴权方式和 SDK 调用保持完全兼容。<br/><br/>
+                有两点建议留意：若使用了 Function Calling，请确认目标模型支持相同的工具定义格式；若依赖较长上下文，切换后建议验证
+                max_tokens 上限是否符合预期。<span class="mock-caret"></span>
+              </div>
             </div>
             <div class="mock-chat-meta">
-              <span>qwen-plus</span>
-              <span>temperature 0.7</span>
-              <span>42 tok/s</span>
+              <span>step-3.7-flash |</span>
+              <span>temperature 0.7 |</span>
+              <span>耗时 1.2s · 72 tokens/s</span>
             </div>
           </div>
         </div>
@@ -118,24 +150,42 @@
       <div class="slide-inner split">
         <div class="slide-copy">
           <p class="slide-eyebrow eyebrow-green">03 · 监控面板</p>
-          <h2 class="slide-title">每一次调用，都有迹可循</h2>
+          <h2 class="slide-title">每次调用，有迹可循</h2>
           <p class="slide-desc">
             对话数据、调用日志与用量看板三视图联动，
             时间范围与粒度自由组合，费用与耗时一目了然。
           </p>
           <a-button type="primary" @click="goToMonitorPage">
             进入监控面板
-            <template #icon><icon-right/></template>
+            <template #icon>
+              <icon-right/>
+            </template>
           </a-button>
         </div>
         <div class="slide-visual">
-          <div class="mock-stats">
-            <div class="mock-stat"><span class="mock-stat-value">12,408</span><span class="mock-stat-label">调用次数</span></div>
-            <div class="mock-stat"><span class="mock-stat-value">3.2M</span><span class="mock-stat-label">消耗 token</span></div>
-            <div class="mock-stat"><span class="mock-stat-value">¥18.62</span><span class="mock-stat-label">区间费用</span></div>
+          <!-- 4 张统计卡片（2×2）：单卡样式复用监控页全局 .stat-card 配色 -->
+          <div class="mock-stat-grid">
+            <div class="stat-card">
+              <div class="stat-label">输入 token</div>
+              <div class="stat-value stat-value-brand">8.42M</div>
+            </div>
+            <div class="stat-card stat-accent-gold">
+              <div class="stat-label">缓存 token</div>
+              <div class="stat-value stat-value-brand">6.16M</div>
+            </div>
+            <div class="stat-card stat-accent-cyan">
+              <div class="stat-label">输出 token</div>
+              <div class="stat-value stat-value-brand">3.27M</div>
+            </div>
+            <div class="stat-card stat-accent-orange">
+              <div class="stat-label">区间费用</div>
+              <div class="stat-value stat-value-brand">¥18.62</div>
+            </div>
           </div>
-          <div class="mock-chart">
-            <div class="mock-bar" v-for="(h, i) in [34, 52, 41, 66, 58, 78, 62, 88, 71, 94, 82, 100]" :key="i" :style="{height: h + '%'}"></div>
+          <!-- 调用次数折线图：直接复用监控页 LineChart 组件，配色与结构完全一致 -->
+          <div class="mock-chart-card">
+            <div class="mock-chart-title">调用次数</div>
+            <LineChart :x-data="monitorXData" :series="monitorSeries" unit="次" renderer="svg"/>
           </div>
         </div>
       </div>
@@ -146,38 +196,55 @@
       <div class="slide-inner split split-reverse">
         <div class="slide-copy">
           <p class="slide-eyebrow eyebrow-orange">04 · 控制台</p>
-          <h2 class="slide-title">密钥、渠道、用户，集中管理</h2>
-          <p class="slide-desc">
-            API 密钥一键创建与吊销，上游渠道权重可调，
-            管理员可直管用户余额与分组，运维视角完整闭环。
-          </p>
+          <h2 class="slide-title">多组凭证，统一管控</h2>
+          <p class="slide-desc">API密钥创建、吊销与余额数据集中汇总，多凭证统一维护，权限与资产状态一目了然。</p>
           <a-button type="primary" @click="goToDashboardPage">
             进入控制台
-            <template #icon><icon-right/></template>
+            <template #icon>
+              <icon-right/>
+            </template>
           </a-button>
         </div>
         <div class="slide-visual">
           <div class="mock-panel">
-            <div class="mock-panel-row">
-              <span class="dot dot-green"></span>
-              <span class="mock-key">sk-agg-****-****-3Fa9</span>
-              <span class="mock-panel-tag">启用</span>
+            <!-- 账户余额汇总，独立区块，分割开 -->
+            <!-- 账户资产：余额 / 累计消费 / 用户分组，复用 .mock-panel-row 行式（不沿用真实控制台 .stat-card） -->
+            <div class="mock-panel-summary">
+              <div class="mock-panel-row">
+                <span class="dot dot-gold"></span>
+                <span class="mock-balance">账户余额 ¥128.40</span>
+                <span class="mock-panel-tag">按量计费</span>
+              </div>
+              <div class="mock-panel-row">
+                <span class="dot dot-blue"></span>
+                <span class="mock-balance">累计消费 ¥76.52</span>
+                <span class="mock-panel-tag">消费开支</span>
+              </div>
+              <div class="mock-panel-row">
+                <span class="dot dot-violet"></span>
+                <span class="mock-balance">用户分组 vip</span>
+                <span class="mock-panel-tag">会员权益</span>
+              </div>
             </div>
-            <div class="mock-panel-row">
-              <span class="dot dot-blue"></span>
-              <span class="mock-channel">渠道 · 官方直连</span>
-              <span class="mock-panel-tag">权重 5</span>
+            <!-- 密钥列表区域 -->
+            <div class="mock-panel-list">
+              <div class="mock-panel-row">
+                <span class="dot dot-green" title="已启用"></span>
+                <span class="mock-key"><span class="mock-key-label">密钥1：</span>sk‑agg‑72ce‑****‑3Fa9</span>
+                <span class="mock-panel-tag">限额 ¥ 35</span>
+              </div>
+              <div class="mock-panel-row">
+                <span class="dot dot-blue" title="已启用"></span>
+                <span class="mock-key"><span class="mock-key-label">密钥2：</span>sk‑ehw‑b91f‑****‑82gh</span>
+                <span class="mock-panel-tag">限额 ¥ 50</span>
+              </div>
+              <div class="mock-panel-row">
+                <span class="dot dot-blue" title="已启用"></span>
+                <span class="mock-key"><span class="mock-key-label">密钥3：</span>sk‑nvu‑24dd‑****‑71kc</span>
+                <span class="mock-panel-tag">限额 ¥ 20</span>
+              </div>
             </div>
-            <div class="mock-panel-row">
-              <span class="dot dot-violet"></span>
-              <span class="mock-channel">渠道 · 第三方聚合</span>
-              <span class="mock-panel-tag">权重 2</span>
-            </div>
-            <div class="mock-panel-row">
-              <span class="dot dot-gold"></span>
-              <span class="mock-balance">余额 ¥ 128.40</span>
-              <span class="mock-panel-tag">按量计费</span>
-            </div>
+
           </div>
         </div>
       </div>
@@ -190,8 +257,7 @@
           <p class="slide-eyebrow eyebrow-cyan">05 · 开发文档</p>
           <h2 class="slide-title">三行代码，完成接入</h2>
           <p class="slide-desc">
-            完全兼容 OpenAI SDK，把 base_url 换成本站地址即可。
-            密钥在控制台创建，模型在广场任选。
+            原生兼容 OpenAI SDK，仅替换 base_url 即可快速对接，控制台生成密钥，模型广场自由选择。
           </p>
           <div class="hero-actions">
             <a-button type="primary" @click="goToDocsPage">查看开发文档</a-button>
@@ -211,14 +277,15 @@ client = OpenAI(
 )
 
 resp = client.chat.completions.create(
-    model=<span class="tok-str">"qwen-plus"</span>,
-    messages=[{<span class="tok-str">"role"</span>: <span class="tok-str">"user"</span>, <span class="tok-str">"content"</span>: <span class="tok-str">"你好"</span>}],
+    model=<span class="tok-str">"deepseek-v4-flash"</span>,
+    messages=[{<span class="tok-str">"role"</span>: <span class="tok-str">"user"</span>, <span
+                  class="tok-str">"content"</span>: <span class="tok-str">"你好"</span>}],
 )</pre>
           </div>
         </div>
       </div>
       <footer class="slide-footer">
-        AgenticAPI · 让 Agent 管理你的 API · OpenAI 兼容中转服务
+        AgenticAPI · 由 Agent 管理你的 API · OpenAI 兼容中转服务
       </footer>
     </section>
 
@@ -235,7 +302,9 @@ resp = client.chat.completions.create(
     </nav>
 
     <!-- 左下角屏码 -->
-    <div class="slide-counter">{{ String(currentIndex + 1).padStart(2, '0') }} / {{ String(sections.length).padStart(2, '0') }}</div>
+    <div class="slide-counter">{{ String(currentIndex + 1).padStart(2, '0') }} /
+      {{ String(sections.length).padStart(2, '0') }}
+    </div>
   </div>
 </template>
 
@@ -245,6 +314,7 @@ import {useRouter} from 'vue-router'
 import {useModelListStore} from '@/stores/modelList'
 import {useUserStore} from '@/stores/user'
 import LobeIcon from '@/components/common/LobeIcon.vue'
+import LineChart from '@/components/monitor/LineChart.vue'
 
 const modelListStore = useModelListStore()
 const userStore = useUserStore()
@@ -278,22 +348,60 @@ const sections = [
 
 // ── 模型广场展示卡：优先取真实数据的前 4 个，无数据时用演示数据 ──
 const demoModels = [
-  {name: 'qwen-plus', icon: 'Qwen', group: 'free', inputPrice: '0.80', outputPrice: '2.00'},
-  {name: 'gpt-4o', icon: 'OpenAI', group: 'vip', inputPrice: '12.50', outputPrice: '50.00'},
-  {name: 'claude-sonnet', icon: 'Claude', group: 'vip', inputPrice: '21.00', outputPrice: '105.00'},
-  {name: 'deepseek-chat', icon: 'DeepSeek', group: 'free', inputPrice: '1.00', outputPrice: '4.00'},
+  {name: 'qwen-plus', icon: 'Qwen', group: 'free', inputPrice: '0.80', cachePrice: '0.00', outputPrice: '2.00'},
+  {name: 'gpt-4o', icon: 'OpenAI', group: 'vip', inputPrice: '12.50', cachePrice: '0.00', outputPrice: '50.00'},
+  {name: 'claude-sonnet', icon: 'Claude', group: 'vip', inputPrice: '21.00', cachePrice: '0.00', outputPrice: '105.00'},
+  {name: 'deepseek-chat', icon: 'DeepSeek', group: 'free', inputPrice: '1.00', cachePrice: '0.00', outputPrice: '4.00'},
 ]
 
-const showcaseModels = computed(() => {
-  const real = modelListStore.totalModelList.slice(0, 4).map(m => ({
-    name: m.name,
-    icon: m.icon || m.name,
-    group: m.modelGroup,
-    inputPrice: String(parseFloat(String(m.inputPrice)) || 0),
-    outputPrice: String(parseFloat(String(m.outputPrice)) || 0),
-  }))
+// ── 监控面板缩略版：调用次数折线图演示数据（复用监控页 LineChart 组件） ──
+const monitorXData = ['08-13', '08-14', '08-15', '08-16', '08-17', '08-18', '08-19', '08-20', '08-21']
+const monitorSeries = [
+  {
+    name: 'step-3.7-flash',
+    data: [214, 287, 302, 268, 341, 389, 356, 412, 487]
+  },
+  {
+    name: 'glm-5.3',
+    data: [97, 108, 115, 189, 234, 261, 198, 172, 163]
+  },
+  {
+    name: 'other',
+    data: [28, 41, 33, 37, 29, 45, 38, 31, 43]
+  }
+]
+
+const showFreeModels = computed(() => {
+  const real = modelListStore.totalModelList
+      .filter(m => m.modelGroup === 'free')
+      .slice(0, 4)
+      .map(m => ({
+        name: m.name,
+        icon: m.icon || m.name,
+        group: m.modelGroup,
+        inputPrice: String(parseFloat(String(m.inputPrice)) || 0),
+        cachePrice: String(parseFloat(String(m.cachePrice)) || 0),
+        outputPrice: String(parseFloat(String(m.outputPrice)) || 0),
+      }))
   return real.length >= 4 ? real : demoModels
 })
+
+
+const showVipModels = computed(() => {
+  const real = modelListStore.totalModelList
+      .filter(m => m.modelGroup === 'vip')
+      .slice(0, 4)
+      .map(m => ({
+        name: m.name,
+        icon: m.icon || m.name,
+        group: m.modelGroup,
+        inputPrice: String(parseFloat(String(m.inputPrice)) || 0),
+        cachePrice: String(parseFloat(String(m.cachePrice)) || 0),
+        outputPrice: String(parseFloat(String(m.outputPrice)) || 0),
+      }))
+  return real.length >= 4 ? real : demoModels
+})
+
 
 // ═══════════ 整页滑动控制（滚轮 / 触摸 / 键盘 / 圆点） ═══════════
 const containerRef = ref<HTMLDivElement | null>(null)
@@ -416,11 +524,25 @@ onUnmounted(() => {
   color: var(--color-text-muted);
 }
 
-.eyebrow-blue { color: var(--color-primary); }
-.eyebrow-violet { color: var(--color-violet); }
-.eyebrow-green { color: var(--color-success); }
-.eyebrow-orange { color: var(--color-accent); }
-.eyebrow-cyan { color: var(--color-cyan); }
+.eyebrow-blue {
+  color: var(--color-primary);
+}
+
+.eyebrow-violet {
+  color: var(--color-violet);
+}
+
+.eyebrow-green {
+  color: var(--color-success);
+}
+
+.eyebrow-orange {
+  color: var(--color-accent);
+}
+
+.eyebrow-cyan {
+  color: var(--color-cyan);
+}
 
 .slide-title {
   margin: 0 0 var(--space-3);
@@ -477,10 +599,9 @@ onUnmounted(() => {
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse 75% 55% at 50% 0%, rgba(22, 93, 255, 0.14) 0%, transparent 62%),
-    radial-gradient(ellipse 42% 42% at 88% 26%, rgba(114, 46, 209, 0.10) 0%, transparent 70%),
-    radial-gradient(ellipse 38% 38% at 8% 72%, rgba(20, 201, 201, 0.08) 0%, transparent 70%);
+  background: radial-gradient(ellipse 75% 55% at 50% 0%, rgba(22, 93, 255, 0.14) 0%, transparent 62%),
+  radial-gradient(ellipse 42% 42% at 88% 26%, rgba(114, 46, 209, 0.10) 0%, transparent 70%),
+  radial-gradient(ellipse 38% 38% at 8% 72%, rgba(20, 201, 201, 0.08) 0%, transparent 70%);
 }
 
 .aurora-blob {
@@ -496,30 +617,30 @@ onUnmounted(() => {
   top: -16%;
   left: 8%;
   background: radial-gradient(circle,
-    rgba(22, 93, 255, 0.32) 0%,
-    rgba(22, 93, 255, 0.16) 30%,
-    rgba(22, 93, 255, 0.06) 55%,
-    transparent 72%);
+  rgba(22, 93, 255, 0.32) 0%,
+  rgba(22, 93, 255, 0.16) 30%,
+  rgba(22, 93, 255, 0.06) 55%,
+  transparent 72%);
 }
 
 .blob-violet {
   top: -10%;
   right: -6%;
   background: radial-gradient(circle,
-    rgba(114, 46, 209, 0.26) 0%,
-    rgba(114, 46, 209, 0.13) 30%,
-    rgba(114, 46, 209, 0.05) 55%,
-    transparent 72%);
+  rgba(114, 46, 209, 0.26) 0%,
+  rgba(114, 46, 209, 0.13) 30%,
+  rgba(114, 46, 209, 0.05) 55%,
+  transparent 72%);
 }
 
 .blob-cyan {
   bottom: -24%;
   left: 32%;
   background: radial-gradient(circle,
-    rgba(20, 201, 201, 0.22) 0%,
-    rgba(20, 201, 201, 0.11) 30%,
-    rgba(20, 201, 201, 0.04) 55%,
-    transparent 72%);
+  rgba(20, 201, 201, 0.22) 0%,
+  rgba(20, 201, 201, 0.11) 30%,
+  rgba(20, 201, 201, 0.04) 55%,
+  transparent 72%);
 }
 
 .hero-inner {
@@ -624,8 +745,12 @@ onUnmounted(() => {
 }
 
 @keyframes hint-float {
-  0%, 100% { transform: translate(-50%, 0); }
-  50% { transform: translate(-50%, 5px); }
+  0%, 100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, 5px);
+  }
 }
 
 /* ═══════════ 通用左右分栏屏 ═══════════ */
@@ -640,30 +765,34 @@ onUnmounted(() => {
   grid-template-columns: 6fr 5fr;
 }
 
+.split-reverse .slide-copy {
+  order: 2; /* 文字放到第二列（右侧，5fr） */
+}
+
+.split-reverse .slide-visual {
+  order: 1; /* 组件放到第一列（左侧，6fr） */
+}
+
 /* 各分屏底色：本屏强调色的极浅色调打底，再叠一层偏向视觉区的径向光晕
    （借鉴 Nexus 的 section halo），光晕位置跟随左右分栏的视觉面板一侧 */
 .slide-models {
-  background:
-    radial-gradient(ellipse 55% 62% at 74% 45%, rgba(22, 93, 255, 0.1) 0%, transparent 65%),
-    linear-gradient(160deg, var(--color-primary-lighter) 0%, var(--color-bg) 55%);
+  background: radial-gradient(ellipse 55% 62% at 74% 45%, rgba(22, 93, 255, 0.1) 0%, transparent 65%),
+  linear-gradient(160deg, var(--color-primary-lighter) 0%, var(--color-bg) 55%);
 }
 
 .slide-studio {
-  background:
-    radial-gradient(ellipse 55% 62% at 26% 45%, rgba(114, 46, 209, 0.09) 0%, transparent 65%),
-    linear-gradient(200deg, var(--color-violet-lighter) 0%, var(--color-bg) 55%);
+  background: radial-gradient(ellipse 55% 62% at 26% 45%, rgba(114, 46, 209, 0.09) 0%, transparent 65%),
+  linear-gradient(200deg, var(--color-violet-lighter) 0%, var(--color-bg) 55%);
 }
 
 .slide-monitor {
-  background:
-    radial-gradient(ellipse 55% 62% at 74% 45%, rgba(0, 180, 42, 0.09) 0%, transparent 65%),
-    linear-gradient(160deg, var(--color-success-light) 0%, var(--color-bg) 55%);
+  background: radial-gradient(ellipse 55% 62% at 74% 45%, rgba(0, 180, 42, 0.09) 0%, transparent 65%),
+  linear-gradient(160deg, var(--color-success-light) 0%, var(--color-bg) 55%);
 }
 
 .slide-console {
-  background:
-    radial-gradient(ellipse 55% 62% at 26% 45%, rgba(255, 125, 0, 0.1) 0%, transparent 65%),
-    linear-gradient(200deg, var(--color-warning-light) 0%, var(--color-bg) 55%);
+  background: radial-gradient(ellipse 55% 62% at 26% 45%, rgba(255, 125, 0, 0.1) 0%, transparent 65%),
+  linear-gradient(200deg, var(--color-warning-light) 0%, var(--color-bg) 55%);
 }
 
 /* ═══════════ 产品 UI 模拟 ═══════════ */
@@ -708,10 +837,69 @@ onUnmounted(() => {
   opacity: 0.55;
 }
 
-.mock-chat { --glow-color: var(--color-violet); }
-.mock-chart { --glow-color: var(--color-success); }
-.mock-panel { --glow-color: var(--color-accent); }
-.mock-code { --glow-color: var(--color-cyan); }
+
+/* 思维链折叠块（对齐工坊 .reasoning-block：橙色警示调，与正文分层） */
+.mock-reasoning {
+  margin-bottom: var(--space-2);
+  border: 1px solid rgba(255, 125, 0, 0.25);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-light);
+  overflow: hidden;
+}
+
+.mock-reasoning-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 4px 8px;
+  font-size: var(--text-xs);
+  color: var(--color-accent-dark);
+}
+
+/* 展开态：箭头旋转 90° 朝下（静态展示，不做点击折叠交互） */
+.mock-reasoning-arrow {
+  font-size: 12px;
+  transform: rotate(90deg);
+}
+
+.mock-reasoning-text {
+  padding: 6px 10px 8px;
+  font-size: var(--text-xs);
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  border-top: 1px solid rgba(255, 125, 0, 0.2);
+}
+
+/* 助手正文（包一层 div，便于和思维链分块堆叠） */
+.mock-chat-text {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text);
+}
+
+.mock-chat-text code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--color-gray-200);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+}
+
+.mock-chat {
+  --glow-color: var(--color-violet);
+}
+
+.mock-chart {
+  --glow-color: var(--color-success);
+}
+
+.mock-panel {
+  --glow-color: var(--color-accent);
+}
+
+.mock-code {
+  --glow-color: var(--color-cyan);
+}
 
 /* 屏2：模型卡片 */
 .mock-card-grid {
@@ -824,7 +1012,9 @@ onUnmounted(() => {
 }
 
 @keyframes caret-blink {
-  50% { opacity: 0; }
+  50% {
+    opacity: 0;
+  }
 }
 
 .mock-chat-meta {
@@ -837,63 +1027,38 @@ onUnmounted(() => {
   color: var(--color-text-muted);
 }
 
-/* 屏4：统计 + 柱状图 */
-.mock-stats {
+/* ═══════════ 屏4：监控面板缩略版（4 卡片 2×2 + 调用次数折线图） ═══════════ */
+/* 单卡样式复用全局 .stat-card（左色脊 + 等宽数值），此处只定 2×2 网格并收紧尺寸 */
+.mock-stat-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--space-2);
   margin-bottom: var(--space-3);
 }
 
-.mock-stat {
-  background-color: var(--color-white);
-  border: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-success);
-  border-radius: var(--radius-md);
+/* 缩略面板里卡片收紧一点，数值字号从 20px 降到 16px 更协调（可选） */
+.mock-stat-grid .stat-card {
   padding: var(--space-2) var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
-.mock-stat:nth-child(2) { border-left-color: var(--color-primary); }
-.mock-stat:nth-child(3) { border-left-color: var(--color-gold); }
-
-.mock-stat-value {
-  font-family: var(--font-mono);
+.mock-stat-grid .stat-value {
   font-size: var(--text-base);
-  font-weight: var(--font-semibold);
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
 }
 
-.mock-stat-label {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
-
-.mock-chart {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 120px;
+/* 折线图卡片：复用监控页 .chart-cell 的白底卡片质感 */
+.mock-chart-card {
   background-color: var(--color-white);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3);
 }
 
-/* 柱子按强调色系循环，多色但低饱和度统一 */
-.mock-bar {
-  flex: 1;
-  border-radius: 2px 2px 0 0;
-  background-color: var(--color-primary-lighter);
+.mock-chart-title {
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-2);
+  color: var(--color-text);
 }
-
-.mock-bar:nth-child(3n + 1) { background-color: var(--color-success); opacity: 0.55; }
-.mock-bar:nth-child(3n + 2) { background-color: var(--color-primary); opacity: 0.55; }
-.mock-bar:nth-child(3n) { background-color: var(--color-gold); opacity: 0.55; }
-.mock-bar:last-child { opacity: 0.9; }
 
 /* 屏5：控制台列表 */
 .mock-panel {
@@ -922,7 +1087,16 @@ onUnmounted(() => {
   color: var(--color-text);
 }
 
-.mock-channel,
+/* 密钥行的"密钥N："标签用正文体（与"账户余额"一致），密钥串仍走等宽 */
+.mock-key-label {
+  font-family: var(--font-sans);
+}
+
+/* 资产区与密钥区之间加一道分割线（两段都是 .mock-panel-row，用边框区分区块） */
+.mock-panel-list {
+  border-top: 1px solid var(--color-border);
+}
+
 .mock-balance {
   flex: 1;
   color: var(--color-text);
@@ -946,10 +1120,21 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.dot-green { background-color: var(--color-success); }
-.dot-blue { background-color: var(--color-primary); }
-.dot-violet { background-color: var(--color-violet); }
-.dot-gold { background-color: var(--color-gold); }
+.dot-green {
+  background-color: var(--color-success);
+}
+
+.dot-blue {
+  background-color: var(--color-primary);
+}
+
+.dot-violet {
+  background-color: var(--color-violet);
+}
+
+.dot-gold {
+  background-color: var(--color-gold);
+}
 
 /* 屏6：深色收尾 */
 .slide-docs {
@@ -962,9 +1147,8 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background:
-    radial-gradient(ellipse 55% 55% at 72% 42%, rgba(22, 93, 255, 0.16) 0%, transparent 62%),
-    radial-gradient(ellipse 40% 45% at 18% 68%, rgba(114, 46, 209, 0.13) 0%, transparent 65%);
+  background: radial-gradient(ellipse 55% 55% at 72% 42%, rgba(22, 93, 255, 0.16) 0%, transparent 62%),
+  radial-gradient(ellipse 40% 45% at 18% 68%, rgba(114, 46, 209, 0.13) 0%, transparent 65%);
   pointer-events: none;
 }
 
@@ -1011,8 +1195,13 @@ onUnmounted(() => {
   overflow-x: auto;
 }
 
-.tok-kw { color: #c384f5; }
-.tok-str { color: #7ce38b; }
+.tok-kw {
+  color: #c384f5;
+}
+
+.tok-str {
+  color: #7ce38b;
+}
 
 .slide-footer {
   position: absolute;
@@ -1134,6 +1323,12 @@ onUnmounted(() => {
   .split-reverse {
     grid-template-columns: 1fr;
     gap: var(--space-6);
+  }
+
+  /* 单列时恢复源顺序：文字在前，组件在后 */
+  .split-reverse .slide-copy,
+  .split-reverse .slide-visual {
+    order: 0;
   }
 
   .slide-dots,

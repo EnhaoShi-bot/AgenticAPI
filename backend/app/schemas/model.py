@@ -12,6 +12,7 @@ class ModelSchema(BaseModel):
 
     # 基础信息
     name: str | None = Field(default=None, alias="name")
+    upstream_name: str | None = Field(default=None, alias="upstreamName")
     label: str | None = Field(default=None, alias="label")
     description: str | None = Field(default=None, alias="description")
     model_group: str | None = Field(default=None, alias="modelGroup")

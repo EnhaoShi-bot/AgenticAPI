@@ -33,3 +33,9 @@ class StudioAsrSchema(BaseModel):
 
     audio: str = Field(description="base64 编码的录音数据")
     format: str = Field(default="mp3", description="音频格式：mp3 / ogg 等")
+
+
+class StudioTitleSchema(BaseModel):
+    """会话标题生成请求体"""
+
+    content: str = Field(description="首条用户消息文本", max_length=8000)

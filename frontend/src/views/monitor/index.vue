@@ -17,13 +17,15 @@
               <div class="stat-label">{{ card.label }}</div>
               <div class="stat-value stat-value-brand">{{ formatNumber(card.value) }}</div>
             </div>
+
           </div>
 
           <!-- 管理员：对话记录长度阈值设置 -->
           <div v-if="userStore.isAdmin" class="page-card threshold-card">
             <div class="threshold-row">
               <span class="threshold-text">记录阈值：仅当输入+输出 token 合计不超过</span>
-              <a-input-number v-model="threshold" :min="100" :max="1000000" :step="500" mode="button" :style="{width: '140px'}"/>
+              <a-input-number v-model="threshold" :min="100" :max="1000000" :step="500" mode="button"
+                              :style="{width: '140px'}"/>
               <span class="threshold-text">时，才记录对话内容（当前对所有开启日志的模型生效）</span>
               <a-button type="primary" :loading="thresholdSaving" @click="saveThreshold">保存</a-button>
             </div>
@@ -31,51 +33,80 @@
 
           <!-- 对话记录筛选栏 -->
           <div class="filter-bar">
-            <a-input
-                v-if="userStore.isAdmin"
-                v-model="chatFilter.username" placeholder="用户名筛选" allow-clear :style="{width: 160}"
-                @press-enter="searchChats" @clear="searchChats"
-            />
-            <a-input
-                v-model="chatFilter.model" placeholder="模型名筛选" allow-clear :style="{width: 180}"
-                @press-enter="searchChats" @clear="searchChats"
-            />
-            <a-button type="primary" @click="searchChats">
-              <template #icon><icon-search/></template>
-              查询
-            </a-button>
+            <a-space>
+              <a-input
+                  v-if="userStore.isAdmin"
+                  v-model="chatFilter.username" placeholder="用户名筛选" allow-clear :style="{width: 160}"
+                  @press-enter="searchChats" @clear="searchChats"
+              />
+              <a-input
+                  v-model="chatFilter.model" placeholder="模型名筛选" allow-clear :style="{width: 180}"
+                  @press-enter="searchChats" @clear="searchChats"
+              />
+              <a-button type="primary" @click="searchChats">
+                <template #icon>
+                  <icon-search/>
+                </template>
+                查询
+              </a-button>
+              <p class="page-head-desc">注：由于部分上游渠道不返回缓存tokens数量，因此缓存tokens的统计数量存在偏差</p>
+            </a-space>
+
           </div>
 
           <!-- 对话记录表格（行展开查看全文） -->
           <a-table
               :data="chatList" :loading="chatLoading" :columns="chatColumns" row-key="id"
               :bordered="{wrapper: true}" :pagination="false" :scroll="{x: 920}"
-              :expandable="{width: 50}"
           >
-            <template #expand-row="{ record }">
-              <div class="chat-detail">
-                <div class="chat-block">
-                  <div class="chat-block-title">输入内容</div>
-                  <pre class="chat-block-text">{{ formatMessages(record.inputContent) }}</pre>
-                </div>
-                <div v-if="record.reasoningContent" class="chat-block">
-                  <div class="chat-block-title">推理内容</div>
-                  <pre class="chat-block-text">{{ record.reasoningContent }}</pre>
-                </div>
-                <div class="chat-block">
-                  <div class="chat-block-title">输出内容</div>
-                  <pre class="chat-block-text">{{ record.outputContent || '（空）' }}</pre>
-                </div>
-              </div>
-            </template>
             <template #time="{ record }">{{ formatTime(record.createTime) }}</template>
             <template #cost="{ record }">{{ record.cost?.toFixed?.(6) ?? record.cost }}</template>
             <template #duration="{ record }">{{ formatDuration(record.durationMs) }}</template>
+            <!-- 新增：详情操作列 -->
+            <template #detail="{ record }">
+              <a-button type="text" size="small" @click="openChatDetail(record)">查看</a-button>
+            </template>
           </a-table>
+          <a-drawer
+              v-model:visible="chatDetailVisible"
+              :title="`对话详情${selectedChat?.modelName ? '：' + selectedChat.modelName : ''}`"
+              :width="620"
+              :mask-closable="true"
+              unmount-on-close
+          >
+            <template v-if="selectedChat">
+              <!-- 概要信息，方便对照 -->
+              <a-descriptions :column="2" size="small" bordered style="margin-bottom: var(--space-3)">
+                <a-descriptions-item label="时间">{{ formatTime(selectedChat.createTime) }}</a-descriptions-item>
+                <a-descriptions-item label="用户">{{ selectedChat.username }}</a-descriptions-item>
+                <a-descriptions-item label="模型">{{ selectedChat.modelName }}</a-descriptions-item>
+                <a-descriptions-item label="输入/输出/缓存">
+                  {{ selectedChat.promptTokens }} / {{ selectedChat.completionTokens }} / {{ selectedChat.cacheTokens }}
+                </a-descriptions-item>
+                <a-descriptions-item label="费用">{{ selectedChat.cost?.toFixed?.(6) }}</a-descriptions-item>
+                <a-descriptions-item label="耗时">{{ formatDuration(selectedChat.durationMs) }}</a-descriptions-item>
+              </a-descriptions>
+
+              <div class="chat-detail">
+                <div class="chat-block">
+                  <div class="chat-block-title">输入内容</div>
+                  <pre class="chat-block-text">{{ formatMessages(selectedChat.inputContent) }}</pre>
+                </div>
+                <div v-if="selectedChat.reasoningContent" class="chat-block">
+                  <div class="chat-block-title">推理内容</div>
+                  <pre class="chat-block-text">{{ selectedChat.reasoningContent }}</pre>
+                </div>
+                <div class="chat-block">
+                  <div class="chat-block-title">输出内容</div>
+                  <pre class="chat-block-text">{{ selectedChat.outputContent || '（空）' }}</pre>
+                </div>
+              </div>
+            </template>
+          </a-drawer>
           <a-pagination
               v-model:current="chatPage"
               v-model:page-size="chatPageSize"
-              :total="chatTotal" :page-size-options="[10, 20, 50]"
+              :total="chatTotal" :page-size-options="[5, 10, 20]"
               show-total show-page-size show-jumper class="table-pagination"
           />
         </a-tab-pane>
@@ -84,28 +115,30 @@
         <a-tab-pane key="logs" title="调用日志">
           <!-- 日志筛选栏 -->
           <div class="filter-bar">
-            <a-select v-model="logFilter.type" placeholder="日志类型" allow-clear :style="{width: 130}" @change="searchLogs">
-              <a-option label="API调用" value="api"/>
-              <a-option label="登录注册" value="login"/>
-              <a-option label="管理员操作" value="admin"/>
-              <a-option label="用户操作" value="user"/>
-            </a-select>
-            <a-input
-                v-model="logFilter.keyword" placeholder="用户名 / 动作 / 详情" allow-clear :style="{width: 200}"
-                @press-enter="searchLogs" @clear="searchLogs"
-            />
-            <a-input
-                v-model="logFilter.model" placeholder="模型名" allow-clear :style="{width: 150}"
-                @press-enter="searchLogs" @clear="searchLogs"
-            />
-            <a-range-picker
-                v-model="logTimeRange" show-time format="YYYY-MM-DD HH:mm:ss"
-                :style="{width: 390}"
-            />
-            <a-button type="primary" @click="searchLogs">查询</a-button>
-            <a-button @click="resetLogFilter">重置</a-button>
+            <a-space>
+              <a-select v-model="logFilter.type" placeholder="日志类型" allow-clear :style="{width: 130}"
+                        @change="searchLogs">
+                <a-option label="API调用" value="api"/>
+                <a-option label="登录注册" value="login"/>
+                <a-option label="管理员操作" value="admin"/>
+                <a-option label="用户操作" value="user"/>
+              </a-select>
+              <a-input
+                  v-model="logFilter.keyword" placeholder="用户名 / 动作 / 详情" allow-clear :style="{width: 200}"
+                  @press-enter="searchLogs" @clear="searchLogs"
+              />
+              <a-input
+                  v-model="logFilter.model" placeholder="模型名" allow-clear :style="{width: 150}"
+                  @press-enter="searchLogs" @clear="searchLogs"
+              />
+              <a-range-picker
+                  v-model="logTimeRange" show-time format="YYYY-MM-DD HH:mm:ss"
+                  :style="{width: 390}"
+              />
+              <a-button type="primary" @click="searchLogs">查询</a-button>
+              <a-button @click="resetLogFilter">重置</a-button>
+            </a-space>
           </div>
-          <p class="filter-tip">管理员可查看全部用户的日志；普通用户仅能看到自己的记录</p>
 
           <!-- 日志表格 -->
           <a-table
@@ -136,22 +169,27 @@
         <a-tab-pane key="stats" title="数据看板">
           <!-- 时间范围 / 粒度 / 刷新 -->
           <div class="filter-bar">
-            <a-range-picker
-                v-model="statsTimeRange" show-time format="YYYY-MM-DD HH:mm:ss"
-                :shortcuts="rangeShortcuts" :style="{width: 390}"
-            />
-            <a-select v-model="granularity" :style="{width: 110}">
-              <a-option label="按小时" value="hour"/>
-              <a-option label="按天" value="day"/>
-              <a-option label="按周" value="week"/>
-              <a-option label="按月" value="month"/>
-            </a-select>
-            <a-button type="primary" :loading="statsLoading" @click="loadStats">
-              <template #icon><icon-refresh/></template>
-              刷新
-            </a-button>
+            <a-space>
+              <a-range-picker
+                  v-model="statsTimeRange" show-time format="YYYY-MM-DD HH:mm:ss"
+                  :shortcuts="rangeShortcuts" :style="{width: 390}"
+              />
+              <a-select v-model="granularity" :style="{width: 110}">
+                <a-option label="按小时" value="hour"/>
+                <a-option label="按天" value="day"/>
+                <a-option label="按周" value="week"/>
+                <a-option label="按月" value="month"/>
+              </a-select>
+              <a-button type="primary" :loading="statsLoading" @click="loadStats">
+                <template #icon>
+                  <icon-refresh/>
+                </template>
+                刷新
+              </a-button>
+              <p style="color: gray;">展示当前用户在所选时间范围内的用量，点击刷新获取最新数据</p>
+            </a-space>
           </div>
-          <p class="filter-tip">展示当前用户在所选时间范围内的用量，点击刷新获取最新数据</p>
+
 
           <!-- 范围累计卡片 -->
           <div class="stat-cards">
@@ -190,16 +228,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { Message } from '@arco-design/web-vue'
-import type { TableColumnData } from '@arco-design/web-vue'
+import {computed, onMounted, reactive, ref, watch} from 'vue'
+import {Message} from '@arco-design/web-vue'
+import type {TableColumnData} from '@arco-design/web-vue'
 import LineChart from '@/components/monitor/LineChart.vue'
-import { getErrorMessage } from '@/api/request'
+import {getErrorMessage} from '@/api/request'
 import {
   getChatRecords, getMonitorLogs, getSiteSummary, getThreshold, getUserStats, updateThreshold,
 } from '@/api/monitor'
-import { useUserStore } from '@/stores/user'
-import type { chatRecordSchema, lineSeriesSchema, logItemSchema, siteSummarySchema, userStatsSchema } from '@/types'
+import {useUserStore} from '@/stores/user'
+import type {chatRecordSchema, lineSeriesSchema, logItemSchema, siteSummarySchema, userStatsSchema} from '@/types'
 
 const userStore = useUserStore()
 
@@ -258,24 +296,26 @@ function formatMessages(messages: chatRecordSchema['inputContent']): string {
 }
 
 // ══════════ 标签一：对话数据 ══════════
-const siteSummary = ref<siteSummarySchema>({ calls: 0, promptTokens: 0, completionTokens: 0, cacheTokens: 0 })
+const siteSummary = ref<siteSummarySchema>({calls: 0, promptTokens: 0, completionTokens: 0, cacheTokens: 0})
 const siteCards = computed(() => [
-  { label: '全站累计输入 token', value: siteSummary.value.promptTokens, tone: '' },
-  { label: '全站累计输出 token', value: siteSummary.value.completionTokens, tone: 'stat-accent-cyan' },
-  { label: '全站累计缓存 token', value: siteSummary.value.cacheTokens, tone: 'stat-accent-gold' },
+  {label: '全站累计输入 tokens', value: siteSummary.value.promptTokens, tone: ''},
+  {label: '全站累计缓存 tokens', value: siteSummary.value.cacheTokens, tone: 'stat-accent-gold'},
+  {label: '全站累计输出 tokens', value: siteSummary.value.completionTokens, tone: 'stat-accent-cyan'},
+
 ])
 
 // 列定义放在 computed 里：管理员登录信息异步回填后"用户"列能正确出现
 const chatColumns = computed<TableColumnData[]>(() => [
-  { title: '时间', slotName: 'time', width: 170 },
-  ...(userStore.isAdmin ? [{ title: '用户', dataIndex: 'username', width: 110, ellipsis: true, tooltip: true }] : []),
-  { title: '模型', dataIndex: 'modelName', minWidth: 150, ellipsis: true, tooltip: true },
-  { title: '输入token', dataIndex: 'promptTokens', width: 100, align: 'right' },
-  { title: '输出token', dataIndex: 'completionTokens', width: 100, align: 'right' },
-  { title: '缓存token', dataIndex: 'cacheTokens', width: 100, align: 'right' },
-  { title: '费用', slotName: 'cost', width: 100, align: 'right' },
-  { title: '耗时', slotName: 'duration', width: 90, align: 'right' },
-])
+  {title: '时间', slotName: 'time', width: 230},
+  ...(userStore.isAdmin
+      ? [{title: '用户', dataIndex: 'username', width: 110, ellipsis: true, tooltip: true}]
+      : []),
+  {title: '模型', dataIndex: 'modelName', width: 150, ellipsis: true, tooltip: true, align: 'center'},
+  {title: '输入tokens', dataIndex: 'promptTokens', width: 100, align: 'center'},
+  {title: '输出tokens', dataIndex: 'completionTokens', width: 100, align: 'center'},
+  {title: '缓存tokens', dataIndex: 'cacheTokens', width: 100, align: 'center'},
+  {title: '详情', slotName: 'detail', width: 80, align: 'center', fixed: 'right'},  // 新增
+]);
 
 async function loadSummary() {
   try {
@@ -315,9 +355,9 @@ async function saveThreshold() {
 const chatList = ref<chatRecordSchema[]>([])
 const chatTotal = ref(0)
 const chatPage = ref(1)
-const chatPageSize = ref(10)
+const chatPageSize = ref(5)
 const chatLoading = ref(false)
-const chatFilter = reactive({ username: '', model: '' })
+const chatFilter = reactive({username: '', model: ''})
 
 async function loadChats() {
   chatLoading.value = true
@@ -344,32 +384,41 @@ function searchChats() {
 
 watch([chatPage, chatPageSize], loadChats)
 
+
+const chatDetailVisible = ref(false)
+const selectedChat = ref<chatRecordSchema | null>(null)
+
+function openChatDetail(record: chatRecordSchema) {
+  selectedChat.value = record
+  chatDetailVisible.value = true
+}
+
 // ══════════ 标签二：调用日志 ══════════
 const logList = ref<logItemSchema[]>([])
 const logTotal = ref(0)
 const logPage = ref(1)
 const logPageSize = ref(10)
 const logLoading = ref(false)
-const logFilter = reactive({ type: '', keyword: '', model: '' })
+const logFilter = reactive({type: '', keyword: '', model: ''})
 // 时间范围选择器返回的值可能是 Date 或格式化字符串，清空时为 undefined，两种都交给 toParam 处理
 const logTimeRange = ref<[Date, Date] | [string, string] | undefined>(undefined)
 
-const logTypeName: Record<string, string> = { api: 'API调用', login: '登录注册', admin: '管理员操作', user: '用户操作' }
+const logTypeName: Record<string, string> = {api: 'API调用', login: '登录注册', admin: '管理员操作', user: '用户操作'}
 const logTypeTag: Record<string, string> = {
   api: 'arcoblue', login: 'green', admin: 'orange', user: 'gray',
 }
 
 const logColumns: TableColumnData[] = [
-  { title: '时间', slotName: 'time', width: 170 },
-  { title: '类型', slotName: 'type', width: 105 },
-  { title: '用户', dataIndex: 'username', width: 110, ellipsis: true, tooltip: true },
-  { title: '动作', dataIndex: 'action', width: 170, ellipsis: true, tooltip: true },
-  { title: '详情', dataIndex: 'detail', minWidth: 230, ellipsis: true, tooltip: true },
-  { title: '模型', dataIndex: 'modelName', minWidth: 130, ellipsis: true, tooltip: true },
-  { title: '渠道', dataIndex: 'channelName', minWidth: 110, ellipsis: true, tooltip: true },
-  { title: '输入/输出/缓存', slotName: 'tokens', width: 130, align: 'center' },
-  { title: '费用', slotName: 'cost', width: 95, align: 'right' },
-  { title: '耗时', slotName: 'duration', width: 90, align: 'right' },
+  {title: '时间', slotName: 'time', width: 230, align: 'center'},
+  {title: '类型', slotName: 'type', width: 100, align: 'center'},
+  {title: '用户', dataIndex: 'username', width: 180, ellipsis: true, tooltip: true, align: 'center'},
+  {title: '动作', dataIndex: 'action', width: 400, ellipsis: true, tooltip: true, align: 'center'},
+  {title: '详情', dataIndex: 'detail', width: 230, ellipsis: true, tooltip: true, align: 'center'},
+  {title: '模型', dataIndex: 'modelName', width: 130, ellipsis: true, tooltip: true, align: 'center'},
+  {title: '渠道', dataIndex: 'channelName', width: 100, ellipsis: true, tooltip: true, align: 'center'},
+  {title: '输入/输出/缓存', slotName: 'tokens', width: 200, align: 'center'},
+  {title: '费用', slotName: 'cost', width: 150, align: 'center'},
+  {title: '耗时', slotName: 'duration', width: 90, align: 'center'},
 ]
 
 async function loadLogs() {
@@ -423,16 +472,23 @@ const selectedModels = ref<string[]>([])
 const showTotal = ref(true)
 
 const rangeShortcuts = [
-  { label: '今天', value: (): [Date, Date] => { const end = new Date(); const start = new Date(end); start.setHours(0, 0, 0, 0); return [start, end] } },
-  { label: '近24小时', value: (): [Date, Date] => [new Date(Date.now() - 24 * 3600 * 1000), new Date()] },
-  { label: '近7天', value: (): [Date, Date] => [new Date(Date.now() - 7 * 24 * 3600 * 1000), new Date()] },
-  { label: '近30天', value: (): [Date, Date] => [new Date(Date.now() - 30 * 24 * 3600 * 1000), new Date()] },
+  {
+    label: '今天', value: (): [Date, Date] => {
+      const end = new Date();
+      const start = new Date(end);
+      start.setHours(0, 0, 0, 0);
+      return [start, end]
+    }
+  },
+  {label: '近24小时', value: (): [Date, Date] => [new Date(Date.now() - 24 * 3600 * 1000), new Date()]},
+  {label: '近7天', value: (): [Date, Date] => [new Date(Date.now() - 7 * 24 * 3600 * 1000), new Date()]},
+  {label: '近30天', value: (): [Date, Date] => [new Date(Date.now() - 30 * 24 * 3600 * 1000), new Date()]},
 ]
 
 const userCards = computed(() => [
-  { label: '输入 token', value: statsData.value?.totals.promptTokens ?? 0, tone: '' },
-  { label: '输出 token', value: statsData.value?.totals.completionTokens ?? 0, tone: 'stat-accent-cyan' },
-  { label: '缓存 token', value: statsData.value?.totals.cacheTokens ?? 0, tone: 'stat-accent-gold' },
+  {label: '输入 tokens', value: statsData.value?.totals.promptTokens ?? 0, tone: ''},
+  {label: '输出 tokens', value: statsData.value?.totals.completionTokens ?? 0, tone: 'stat-accent-cyan'},
+  {label: '缓存 tokens', value: statsData.value?.totals.cacheTokens ?? 0, tone: 'stat-accent-gold'},
 ])
 
 const hasStatsData = computed(() => (statsData.value?.buckets.length ?? 0) > 0)
@@ -456,21 +512,21 @@ function buildSeries(field: metricField): lineSeriesSchema[] {
     const valueByTime = new Map(
         buckets.filter((b) => b.modelName === modelName).map((b) => [b.time, b[field]]),
     )
-    series.push({ name: modelName, data: chartTimes.value.map((t) => valueByTime.get(t) ?? 0) })
+    series.push({name: modelName, data: chartTimes.value.map((t) => valueByTime.get(t) ?? 0)})
   }
   if (showTotal.value) {
     const totals = new Map<string, number>()
     for (const b of buckets) totals.set(b.time, (totals.get(b.time) ?? 0) + b[field])
-    series.push({ name: '总计', data: chartTimes.value.map((t) => totals.get(t) ?? 0) })
+    series.push({name: '总计', data: chartTimes.value.map((t) => totals.get(t) ?? 0)})
   }
   return series
 }
 
 const metricCharts = computed(() => [
-  { title: '调用次数', unit: '次', series: buildSeries('calls') },
-  { title: '输入 token', unit: 'token', series: buildSeries('promptTokens') },
-  { title: '输出 token', unit: 'token', series: buildSeries('completionTokens') },
-  { title: '缓存 token', unit: 'token', series: buildSeries('cacheTokens') },
+  {title: '调用次数', unit: '次', series: buildSeries('calls')},
+  {title: '输入 token', unit: 'token', series: buildSeries('promptTokens')},
+  {title: '输出 token', unit: 'token', series: buildSeries('completionTokens')},
+  {title: '缓存 token', unit: 'token', series: buildSeries('cacheTokens')},
 ])
 
 async function loadStats() {
@@ -523,7 +579,7 @@ watch([statsTimeRange, granularity], loadStats)
 
 /* ── 阈值设置卡片 ── */
 .threshold-card {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-1);
 }
 
 .threshold-row {
@@ -565,7 +621,7 @@ watch([statsTimeRange, granularity], loadStats)
   border-radius: var(--radius-lg);
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 320px;
+  max-height: 180px;
   overflow-y: auto;
   font-family: inherit;
   font-size: var(--text-xs);
@@ -599,5 +655,11 @@ watch([statsTimeRange, granularity], loadStats)
   .charts-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 </style>

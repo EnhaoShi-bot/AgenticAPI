@@ -2,15 +2,14 @@
 <template>
     <div class="settings-panel">
         <div class="panel-section">
-            <div class="panel-label">模型</div>
-            <a-select v-model="studioStore.selectedModelName" placeholder="选择模型" allow-clear allow-search
+            <div class="panel-label">模型列表</div>
+            <a-select v-model="studioStore.selectedModelName" placeholder="请选择一个模型" allow-clear allow-search
                       @change="studioStore.persistParams()">
                 <a-optgroup v-for="group in modelGroups" :key="group.label" :label="group.label">
                     <a-option v-for="model in group.models" :key="model.name" :value="model.name"
-                              :label="model.label || model.name">
+                              :label="model.name || model.label">
                         <div class="model-option">
-                            <span class="model-option-name">{{ model.label || model.name }}</span>
-                            <span class="model-option-desc">{{ model.description }}</span>
+                            <span class="model-option-name">{{ model.name ||  model.label }}</span>
                         </div>
                     </a-option>
                 </a-optgroup>
@@ -21,7 +20,7 @@
         <div class="panel-section">
             <div class="panel-label">System Prompt</div>
             <a-textarea v-model="studioStore.params.systemPrompt" :max-length="2000" show-word-limit :auto-size="{minRows: 3, maxRows: 8}"
-                        placeholder="给模型的系统指令，如：你是一个严谨的技术助手"
+                        placeholder="请输入系统提示词，如：你是一个资深代码审查员，负责检查代码的质量和性能"
                         @change="studioStore.persistParams()"/>
         </div>
 

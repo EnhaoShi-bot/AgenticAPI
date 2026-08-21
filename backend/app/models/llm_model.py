@@ -31,6 +31,9 @@ class ModelsTable(BaseModel):
         BigInteger, primary_key=True, autoincrement=True, comment="主键ID"
     )
     name: Mapped[str] = mapped_column(String(128), nullable=False, comment="模型唯一标识名称")
+    upstream_name: Mapped[str | None] = mapped_column(
+        String(128), default=None, comment="实际请求上游用的模型名，为空时用 name"
+    )
     label: Mapped[str] = mapped_column(String(128), nullable=False, comment="前端展示名称")
     description: Mapped[str | None] = mapped_column(Text, comment="模型描述")
     is_request_mode: Mapped[bool] = mapped_column(
