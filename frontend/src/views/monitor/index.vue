@@ -49,9 +49,8 @@
                 </template>
                 查询
               </a-button>
-              <p class="page-head-desc">注：由于部分上游渠道不返回缓存tokens数量，因此缓存tokens的统计数量存在偏差</p>
             </a-space>
-
+            <p class="filter-tip">注：由于部分上游渠道不返回缓存 tokens 数量，因此缓存 tokens 的统计数量存在偏差</p>
           </div>
 
           <!-- 对话记录表格（行展开查看全文） -->
@@ -186,8 +185,8 @@
                 </template>
                 刷新
               </a-button>
-              <p style="color: gray;">展示当前用户在所选时间范围内的用量，点击刷新获取最新数据</p>
             </a-space>
+            <p class="filter-tip">展示当前用户在所选时间范围内的用量，点击刷新获取最新数据</p>
           </div>
 
 
@@ -597,6 +596,12 @@ watch([statsTimeRange, granularity], loadStats)
 .model-filter-label {
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
+}
+
+/* 筛选栏内的提示行：独占一行（filter-bar 是 flex 换行容器），底距交给 filter-bar 自身 */
+.filter-bar .filter-tip {
+  flex-basis: 100%;
+  margin-bottom: 0;
 }
 
 /* ── 对话记录展开区 ── */

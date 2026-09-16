@@ -20,60 +20,62 @@
       </div>
     </header>
 
-    <!-- 用户列表（行内编辑余额/分组/管理员/状态） -->
-    <a-table
-        row-key="id"
-        :data="users"
-        :columns="columns"
-        :loading="loading"
-        :bordered="{wrapper: true}"
-        :pagination="false"
-        :row-selection="{type: 'checkbox', showCheckedAll: true, selectedRowKeys: selectedKeys}"
-        :scroll="{x: 1180}"
-        :row-class="record => record.isGuest ? 'guest-row' : ''"
-        @selection-change="onSelectionChange"
-    >
-      <template #username="{ record }">
-        {{ record.username }}<span v-if="record.isGuest" class="guest-mark">（访客）</span>
-      </template>
-      <template #nickname="{ record }">{{ record.nickname || '-' }}</template>
-      <template #userGroup="{ record }">
-        <a-select v-model="record.userGroup" size="small" :style="{width: 86}">
-          <a-option value="free">free</a-option>
-          <a-option value="vip">vip</a-option>
-        </a-select>
-      </template>
-      <template #isAdmin="{ record }">
-        <a-switch v-model="record.isAdmin" size="small"/>
-      </template>
-      <template #balance="{ record }">
-        <a-input-number v-model="record.balance" size="small" :min="0" :step="0.01" :precision="2"
-                        :style="{width: 110}" mode="button"/>
-      </template>
-      <template #usedQuota="{ record }">{{ record.usedQuota.toFixed(6) }}</template>
-      <template #status="{ record }">
-        <a-switch v-model="record.status" size="small"/>
-      </template>
-      <template #createTime="{ record }">{{ formatTime(record.createTime) }}</template>
-      <template #lastLoginTime="{ record }">{{ formatTime(record.lastLoginTime) }}</template>
-      <template #operations="{ record }">
-        <a-button type="text" size="small" @click="handleSave(record)">保存</a-button>
-        <a-button type="text" size="small" status="danger" @click="handleBatchDelete([record.id])">删除</a-button>
-      </template>
-    </a-table>
+    <!-- 用户列表（行内编辑余额/分组/管理员/状态）：白卡容器与秘钥页统一 -->
+    <div class="page-card">
+      <a-table
+          row-key="id"
+          :data="users"
+          :columns="columns"
+          :loading="loading"
+          :bordered="{wrapper: true}"
+          :pagination="false"
+          :row-selection="{type: 'checkbox', showCheckedAll: true, selectedRowKeys: selectedKeys}"
+          :scroll="{x: 1180}"
+          :row-class="record => record.isGuest ? 'guest-row' : ''"
+          @selection-change="onSelectionChange"
+      >
+        <template #username="{ record }">
+          {{ record.username }}<span v-if="record.isGuest" class="guest-mark">（访客）</span>
+        </template>
+        <template #nickname="{ record }">{{ record.nickname || '-' }}</template>
+        <template #userGroup="{ record }">
+          <a-select v-model="record.userGroup" size="small" :style="{width: 86}">
+            <a-option value="free">free</a-option>
+            <a-option value="vip">vip</a-option>
+          </a-select>
+        </template>
+        <template #isAdmin="{ record }">
+          <a-switch v-model="record.isAdmin" size="small"/>
+        </template>
+        <template #balance="{ record }">
+          <a-input-number v-model="record.balance" size="small" :min="0" :step="0.01" :precision="2"
+                          :style="{width: 110}" mode="button"/>
+        </template>
+        <template #usedQuota="{ record }">{{ record.usedQuota.toFixed(6) }}</template>
+        <template #status="{ record }">
+          <a-switch v-model="record.status" size="small"/>
+        </template>
+        <template #createTime="{ record }">{{ formatTime(record.createTime) }}</template>
+        <template #lastLoginTime="{ record }">{{ formatTime(record.lastLoginTime) }}</template>
+        <template #operations="{ record }">
+          <a-button type="text" size="small" @click="handleSave(record)">保存</a-button>
+          <a-button type="text" size="small" status="danger" @click="handleBatchDelete([record.id])">删除</a-button>
+        </template>
+      </a-table>
 
-    <!-- 分页 -->
-    <a-pagination
-        v-if="total > pageSize"
-        v-model:current="page"
-        :total="total"
-        :page-size="pageSize"
-        :page-size-options="[10, 20, 50]"
-        show-total show-jumper
-        class="table-pagination"
-        @change="load"
-        @page-size-change="onPageSizeChange"
-    />
+      <!-- 分页 -->
+      <a-pagination
+          v-if="total > pageSize"
+          v-model:current="page"
+          :total="total"
+          :page-size="pageSize"
+          :page-size-options="[10, 20, 50]"
+          show-total show-jumper
+          class="table-pagination"
+          @change="load"
+          @page-size-change="onPageSizeChange"
+      />
+    </div>
   </div>
 </template>
 
@@ -192,6 +194,23 @@ onMounted(load)
   margin-left: auto;
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
+}
+
+/* 行内编辑降噪：下拉/数字输入平时隐去边框，悬停或聚焦时恢复控件形态，
+   降低 11 列表格里每行 3-4 个带边框控件的视觉噪音 */
+.userlist-page :deep(.arco-table .arco-select-view-single),
+.userlist-page :deep(.arco-table .arco-input-number .arco-input-wrapper) {
+  border-color: transparent;
+  background-color: transparent;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.userlist-page :deep(.arco-table .arco-select-view-single:hover),
+.userlist-page :deep(.arco-table .arco-select-view-single.arco-select-view-focus),
+.userlist-page :deep(.arco-table .arco-input-number .arco-input-wrapper:hover),
+.userlist-page :deep(.arco-table .arco-input-number .arco-input-wrapper.arco-input-focus) {
+  border-color: var(--color-border);
+  background-color: var(--color-white);
 }
 
 /* 访客行整行弱化 */

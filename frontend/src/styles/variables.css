@@ -57,12 +57,17 @@
   --color-text: var(--color-gray-900);
   --color-text-secondary: var(--color-gray-700);
   --color-text-muted: var(--color-gray-500);
+  --color-text-disabled: var(--color-gray-400);
   --color-bg: var(--color-white);
   --color-bg-secondary: var(--color-gray-50);
   /* 页面布局底色：控制台 / 文档等内容区背景 */
   --color-bg-layout: var(--color-gray-100);
   --color-border: var(--color-gray-200);
   --color-border-hover: var(--color-gray-300);
+
+  /* 交互态：输入类控件聚焦时的柔光焦点环（自研控件与 Arco 控件共用同一语言） */
+  --color-focus-ring: rgba(22, 93, 255, 0.15);
+  --color-focus-ring-error: rgba(245, 63, 63, 0.15);
 
   /* ── 字体系统 ─────────────────────────────────────────────────────────── */
   /* 三种字体角色（网络字体在 styles/index.css 顶部自托管引入）：

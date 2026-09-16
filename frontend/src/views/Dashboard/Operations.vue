@@ -17,10 +17,10 @@
       </div>
     </header>
 
-    <!-- 数据展示区域 -->
+    <!-- 数据展示区域：每张卡一条品牌色左脊线区分渠道（与统计卡同一设计语言） -->
     <div class="data-sections">
       <!-- 火山方舟 Agent Plan -->
-      <div class="plan-card">
+      <div class="plan-card plan-card-vol">
         <div class="plan-card-head">
           <div class="plan-card-title">
             <span>火山方舟 Agent Plan</span>
@@ -41,7 +41,7 @@
       </div>
 
       <!-- 阶跃星辰 Step Plan -->
-      <div class="plan-card">
+      <div class="plan-card plan-card-step">
         <div class="plan-card-head">
           <div class="plan-card-title">
             <span>阶跃星辰 Step Plan</span>
@@ -62,7 +62,7 @@
       </div>
 
       <!-- 智谱 Coding Plan（v3 套餐） -->
-      <div class="plan-card">
+      <div class="plan-card plan-card-zai">
         <div class="plan-card-head">
           <div class="plan-card-title">
             <span>智谱Coding Plan</span>
@@ -83,7 +83,7 @@
       </div>
 
       <!-- 智谱 Coding Plan（v2 套餐，上游仅返回百分比） -->
-      <div class="plan-card">
+      <div class="plan-card plan-card-zai2">
         <div class="plan-card-head">
           <div class="plan-card-title">
             <span>智谱Coding Plan</span>
@@ -532,9 +532,22 @@ onMounted(() => {
   min-height: 160px;
   background-color: var(--color-white);
   border: 1px solid var(--color-border);
+  /* 渠道身份脊线：与统计卡同一设计语言，每张卡通过修饰类指定强调色 */
+  border-left: 3px solid var(--plan-accent, var(--color-primary));
   border-radius: var(--radius-xl);
   padding: var(--space-4) var(--space-5);
+  transition: box-shadow var(--transition-fast);
 }
+
+.plan-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* 各渠道强调色：火山主蓝 / 阶跃紫 / 智谱 v3 青 / 智谱 v2 金 */
+.plan-card-vol { --plan-accent: var(--color-primary); }
+.plan-card-step { --plan-accent: var(--color-violet); }
+.plan-card-zai { --plan-accent: var(--color-cyan); }
+.plan-card-zai2 { --plan-accent: var(--color-gold); }
 
 .plan-card-head {
   display: flex;

@@ -126,8 +126,18 @@ const handleUserCommand = (key: string | number | Record<string, unknown> | unde
   top: 0;
   z-index: 50;
   height: var(--layout-header-height);
-  background-color: var(--color-white);
+  /* 毛玻璃：半透明白底 + 背景模糊，内容从栏下滚过时有景深（克制档） */
+  background-color: rgba(255, 255, 255, 0.85);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+  backdrop-filter: saturate(180%) blur(8px);
   border-bottom: 1px solid var(--color-border);
+}
+
+/* 不支持 backdrop-filter 的浏览器退回实底，保证可读性 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .app-header {
+    background-color: var(--color-white);
+  }
 }
 
 .header-inner {

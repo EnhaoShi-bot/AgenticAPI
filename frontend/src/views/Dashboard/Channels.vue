@@ -28,25 +28,27 @@
       </div>
     </header>
 
-    <!-- 【渠道列表】表格展示 -->
-    <a-table
-        :data="filteredChannels"
-        :loading="loading"
-        :columns="columns"
-        row-key="channelName"
-        :bordered="{wrapper: true}"
-        :pagination="false"
-        size="small"
-    >
-      <template #status="{ record }">
-        <!-- 单向绑定，切换时调接口，成功后才更新本地状态 -->
-        <a-switch :model-value="record.status"
-                  @change="(val: string | number | boolean) => handleStatusChange(record, Boolean(val))"/>
-      </template>
-      <template #operations="{ record }">
-        <a-button type="text" size="small" @click="openEditDrawer(record)">编辑</a-button>
-      </template>
-    </a-table>
+    <!-- 【渠道列表】表格展示：白卡容器与其他控制台页统一 -->
+    <div class="page-card">
+      <a-table
+          :data="filteredChannels"
+          :loading="loading"
+          :columns="columns"
+          row-key="channelName"
+          :bordered="{wrapper: true}"
+          :pagination="false"
+          size="small"
+      >
+        <template #status="{ record }">
+          <!-- 单向绑定，切换时调接口，成功后才更新本地状态 -->
+          <a-switch :model-value="record.status"
+                    @change="(val: string | number | boolean) => handleStatusChange(record, Boolean(val))"/>
+        </template>
+        <template #operations="{ record }">
+          <a-button type="text" size="small" @click="openEditDrawer(record)">编辑</a-button>
+        </template>
+      </a-table>
+    </div>
 
     <!-- 【新增/编辑抽屉】复用同一表单，通过 dialogMode 区分 -->
     <a-drawer

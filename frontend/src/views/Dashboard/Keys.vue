@@ -39,12 +39,13 @@
           {{ record.name }}
         </template>
         <template #key="{ record }">
-          <a-typography-text code copyable class="key-text">{{ record.key }}</a-typography-text>
+          <a-typography-text code copyable>{{ record.key }}</a-typography-text>
         </template>
         <template #status="{ record }">
-          <a-tag :color="record.status ? 'green' : 'red'" size="small">
+          <span class="status-cell" :class="record.status ? 'is-on' : 'is-off'">
+            <span class="status-dot"/>
             {{ record.status ? '启用' : '禁用' }}
-          </a-tag>
+          </span>
         </template>
         <template #createTime="{ record }">{{ formatTime(record.createTime) }}</template>
         <template #lastUsedTime="{ record }">
@@ -152,16 +153,22 @@ onMounted(load)
 
 .create-row {
   display: flex;
-  gap: var(--space-1);
-  margin-bottom: var(--space-1);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .keys-table {
   margin-top: var(--space-2);
 }
 
-.key-text {
-  font-size: var(--text-xs);
+/* 密钥展示：mono 等宽 + 圆角灰底内衬，替代 Arco code 默认的方角样式 */
+.keys-table :deep(code) {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 2px 8px;
+  background-color: var(--color-gray-50);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 .keys-empty {

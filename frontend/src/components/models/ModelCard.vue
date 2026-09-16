@@ -93,12 +93,15 @@ const emit = defineEmits<{ detail: [model: modelInfoSchema] }>()
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-3) var(--space-3) var(--space-3);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base),
+  transform var(--transition-base);
 }
 
+/* 悬停：描边变主色 + 阴影升级 + 轻微上浮（与工坊建议卡同一交互语言） */
 .model-card:hover {
   border-color: var(--color-primary-light);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 /* 置顶模型：整卡金色浅底 + 描边 + 右上角徽章 */

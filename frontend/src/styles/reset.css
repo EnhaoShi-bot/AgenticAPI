@@ -46,6 +46,42 @@ select {
   color: inherit;
 }
 
+/* ── 全局滚动条：细圆角灰系（替代浏览器原生粗灰条）──
+   Chromium / Safari / 新版 Edge 走 ::-webkit-scrollbar，
+   Firefox 走 scrollbar-width + scrollbar-color */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gray-300) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-gray-300);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-gray-400);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 文字选中色：主色浅底，替换浏览器默认蓝 */
+::selection {
+  background-color: var(--color-primary-lighter);
+  color: var(--color-text);
+}
+
 a {
   color: var(--color-primary);
   text-decoration: none;

@@ -161,12 +161,12 @@
 .input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.15);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 .input:disabled {
   background-color: var(--color-gray-100);
-  color: var(--color-text-muted);
+  color: var(--color-text-disabled);
   cursor: not-allowed;
 }
 
@@ -175,7 +175,7 @@
 }
 
 .input-error:focus {
-  box-shadow: 0 0 0 3px rgba(245, 63, 63, 0.15);
+  box-shadow: 0 0 0 3px var(--color-focus-ring-error);
 }
 
 /* 文本域 */
@@ -198,7 +198,7 @@
 .textarea:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.15);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 /* 下拉选择 */
@@ -226,7 +226,7 @@
 .select:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.15);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 /* 复选框 / 单选框 */
@@ -674,6 +674,36 @@
   margin-top: var(--space-3);
   display: flex;
   justify-content: flex-end;
+}
+
+/* ── 状态点：表格/列表状态列的轻量语义标识（比彩色色块 tag 更克制） ──
+   用法：<span class="status-cell is-on"><span class="status-dot"/>启用</span> */
+.status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-gray-400);
+  flex-shrink: 0;
+}
+
+.status-cell.is-on .status-dot {
+  background-color: var(--color-success);
+}
+
+.status-cell.is-off {
+  color: var(--color-text-muted);
+}
+
+.status-cell.is-off .status-dot {
+  background-color: var(--color-error);
 }
 
 /* ── 内容卡片（控制台页面通用白卡容器） ── */

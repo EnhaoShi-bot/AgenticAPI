@@ -5,11 +5,33 @@
    全站密度基调：紧凑型企业控制台 —— 表格 13px、行距收紧、表单间距 16px。
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ── 聚焦态：输入类组件统一柔光焦点环 ──
+   Arco 默认聚焦只有边框变色，这里补上 3px 光环，与自研 .input / .select 同语言；
+   类名与 Arco 内部一致（wrapper 聚焦时挂 *-focus 类） */
+.arco-input-wrapper.arco-input-focus,
+.arco-textarea-wrapper.arco-textarea-focus,
+.arco-select-view-single.arco-select-view-focus,
+.arco-select-view-multiple.arco-select-view-focus,
+.arco-picker-focused {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+/* 表单校验错误时的聚焦环跟随错误色（Arco 默认只变边框） */
+.arco-form-item-status-error .arco-input-wrapper.arco-input-focus,
+.arco-form-item-status-error .arco-textarea-wrapper.arco-textarea-focus,
+.arco-form-item-status-error .arco-select-view-single.arco-select-view-focus,
+.arco-form-item-status-error .arco-select-view-multiple.arco-select-view-focus {
+  box-shadow: 0 0 0 3px var(--color-focus-ring-error);
+}
+
 /* ── 全局密度：表格 ── */
 .arco-table {
   font-size: 13px;
   /* 表格以数字列为主，统一等宽数字对齐 */
   font-variant-numeric: tabular-nums;
+  /* 圆角裁剪：外层收边，行悬停高亮不再溢出直角（内层 .arco-table-container 滚动不受影响） */
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .arco-table .arco-table-th {
@@ -19,6 +41,8 @@
 
 .arco-table .arco-table-td {
   padding: 9px 12px;
+  /* 行悬停底色淡入，替代生硬的瞬变 */
+  transition: background-color var(--transition-fast);
 }
 
 /* 表格：表头浅灰底 + 次级文字色，行悬停高亮 */
@@ -66,6 +90,12 @@
 .arco-select-popup,
 .arco-dropdown {
   border-radius: var(--radius-lg);
+}
+
+/* 弹层遮罩加轻模糊：保持默认遮罩色，只增加一层景深（克制档 2px） */
+.arco-modal-mask,
+.arco-drawer-mask {
+  backdrop-filter: blur(2px);
 }
 
 /* 分页器与表格间距配合：去掉默认 margin-top 由页面自行控制 */
