@@ -378,10 +378,15 @@ onMounted(() => {
 }
 
 /* ── 卡片网格 ── */
+/* 宽度封顶 1076px（4×260 卡片 + 3×12 间距）：大屏恒定每行 4 张（默认一页 12 个 = 整 3 行），
+   窄屏沿 auto-fill 自然降级 3→2→1 列；页头与分页器本就居中，网格同样居中对齐 */
 .model-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--space-3);
+  max-width: 1076px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ── 翻页器 ── */

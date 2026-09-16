@@ -125,7 +125,6 @@ onMounted(() => {
 <style scoped>
 .overview-page {
   padding: var(--space-5) var(--space-6);
-  max-width: 1280px;
 }
 
 .card-title {

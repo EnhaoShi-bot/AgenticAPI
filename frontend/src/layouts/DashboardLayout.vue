@@ -23,7 +23,10 @@
 
     <!-- 主内容区域 -->
     <main class="dashboard-main">
-      <slot/>
+      <!-- 内容列：宽度封顶居中（大屏下控制台内容不再无限拉伸，两侧留灰底呼吸） -->
+      <div class="dashboard-container">
+        <slot/>
+      </div>
     </main>
   </div>
 </template>
@@ -124,6 +127,13 @@ const visibleDashItems = computed(() => {
   min-width: 0;
   overflow-y: auto;
   background-color: var(--color-bg-layout);
+}
+
+/* 内容列：全站统一 1280px 封顶 + 居中，覆盖所有控制台子页 */
+.dashboard-container {
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 @media (max-width: 768px) {
