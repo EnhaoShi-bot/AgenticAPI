@@ -10,6 +10,10 @@ engine = create_async_engine(
     echo=setting.DEBUG,  # 输出数据库语句
     pool_size=10,  # 连接池大小
     max_overflow=10,  # 最大溢出连接数
+    # 连接回收周期必须小于 MySQL wait_timeout（当前部署为 600s）：
+    # asyncmy 的死连接抛 RuntimeError（handler is closed），不在 pre_ping 可识别的断连错误内，
+    # 只有主动回收才能避免闲置连接被服务端掐断后导致请求 500
+    pool_recycle=300,
 )
 
 asyncSessionLocal = async_sessionmaker(

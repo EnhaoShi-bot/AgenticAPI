@@ -1,6 +1,6 @@
 # AgenticAPI
 
-> 文档版本：v0.7.1 ｜ 更新日期：2026-08-21 ｜ 状态：持续迭代中
+> 文档版本：v0.7.3 ｜ 更新日期：2026-09-16 ｜ 状态：持续迭代中
 
 ## 背景
 
@@ -15,10 +15,11 @@ AgenticAPI 是一个基于 Agent 的 API 中转站平台，支持通过 Agent �
 ### 已实现
 
 - **核心中转链路**：`POST /v1/chat/completions`（OpenAI Chat 兼容），API 密钥（sk-xxx）鉴权 → 模型/分组/余额校验 →
-  多渠道顺序轮询转发（支持流式/非流式透传）→ 按模型定价计费扣减余额 → 记录调用日志
+  多渠道顺序轮询转发（支持流式/非流式透传）→ 按模型定价计费扣减余额 → 记录调用日志；`GET /v1/models`（OpenAI Models
+  兼容）返回当前密钥用户按分组权限可调用的模型列表（已过滤停用模型与渠道全停的模型）
 - **模型广场**：模型列表展示、搜索、分页，模型的添加 / 编辑 / 删除（含定价、渠道绑定、能力开关、模型映射等配置，需管理员）
 - **渠道管理**：上游渠道的增删改查、状态启停开关、支持模型列表维护（需管理员）
-- **上游运维监控**：火山方舟 / 深势科技 / 阶跃星辰 / 智谱 TokenPlan 用量监控与凭证管理（需管理员）
+- **上游运维监控**：火山方舟 / 阶跃星辰 / 智谱 TokenPlan 用量监控与凭证管理（需管理员，火山方舟用量经深势 BohrClaw 平台接口查询）
 - **用户体系（前后端）**：导航栏右上角注册 / 登录弹窗，bcrypt 密码加密，不透明
   Token（uuid4）签发与校验，登出即时失效；用户表含管理员、余额（DECIMAL）、用户分组（free/vip）、封禁状态等字段
 - **API 密钥管理**：每个用户最多 5 个 `sk-` 密钥，控制台-秘钥页面增删改查、启停
@@ -78,6 +79,8 @@ POST /v1/chat/completions
 ```
 
 - **模型映射**：模型可配置 `upstreamName`（实际请求上游用的模型名），为空时与对外名 `name` 相同、原样透传；配置后，请求发往上游时 `model` 字段替换为 `upstreamName`，响应（非流式顶层 / 流式每个 SSE 事件）里的 `model` 还原为对外名；日志与用量统计始终记对外名。
+- **模型列表**：`GET /v1/models`（与中转同一套密钥鉴权）返回当前用户可调用的模型，OpenAI `{"object": "list", "data": [...]}` 格式；
+  过滤口径与调用校验一致——模型启用 + 分组权限 + 至少绑定一个启用渠道，按名称排序；不计费、不校验余额，`upstreamName` / 渠道等内部配置不外泄。
 - 流式（`stream: true`）与非流式都支持：SSE 原样转发，自动附加 `include_usage` 以在最后一个 chunk 获取用量计费；
 - 报文规范：成功透传上游 JSON / SSE，失败返回 OpenAI 格式 `{"error": {message, type, code}}`（401 密钥无效 / 403 无权限 /
   402 余额不足 / 404 模型不存在 / 502 全部渠道失败）；
@@ -210,6 +213,9 @@ pip install -r requirements.txt
 python -m uvicorn app.main:app --host 127.0.0.1 --port 2027
 ```
 
+> **本机开发环境**：当前开发机使用 Miniconda 的 `agent` 虚拟环境（Python 3.12，依赖已安装），
+> 启动前先 `conda activate agent` 再执行上面的 `python -m uvicorn ...` 即可，无需重复 `pip install`。
+
 > **已有旧数据库的升级说明**：启动时的自动建表只创建不存在的表，不会给已存在的表加列。若你的 `user`
 > 表是旧版本建的，需手动补齐缺失列（新装环境无需执行）：
 >
@@ -253,7 +259,8 @@ npm run build      # 生产构建
 所有接口统一返回 `{code, message, data}` 结构：成功时 HTTP 与业务码恒为
 200；业务错误、参数校验失败（422）、数据库异常等由全局异常处理器统一格式化。字段使用驼峰命名。
 
-**例外**：`/v1/chat/completions`（对外中转）与 `/studio/chat`（工坊对话）走 OpenAI 报文风格——成功透传上游 JSON / SSE 流，失败返回
+**例外**：`/v1/chat/completions`（对外中转）、`/v1/models`（模型列表）与 `/studio/chat`（工坊对话）走 OpenAI 报文风格——成功透传上游
+JSON / SSE 流或返回 OpenAI 结构（`/v1/models` 返回 `{"object": "list", "data": [...]}`），失败返回
 `{"error": {message, type, code}}`，因为调用方需要按 OpenAI SDK 的约定解析（工坊前端用 fetch 手动解析 SSE，不经 axios 拦截器）。
 
 完整规范（含各接口请求/响应示例与前端对接约定）见：[`backend/docs/API接口规范.md`](docs/API接口规范.md)
@@ -262,6 +269,8 @@ npm run build      # 生产构建
 
 | 版本     | 日期         | 说明                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 |--------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| v0.7.3 | 2026-09-16 | 下线深势科技 Coding Plan 用量监控：前端删除深势卡片、`bohrUsageData` 类型与 `refreshBohrUsage` 等刷新逻辑，监控卡片改为 2×2 布局（移除"敬请期待"占位卡）；后端删除 `services/upstream/bohr.py`、`/operations` 编排中的深势分支、`token_utils` 的 `coding_plan` 过期键与 schema 死字段，清理 `bohr_data.json` 调试快照；火山方舟用量查询不受影响（本就直接调用深势 BohrClaw 平台接口，`bohrclaw_token`/`bohrclaw_instance` 凭证链路完整保留）；全项目复查无深势监控残留 |
+| v0.7.2 | 2026-09-16 | 新增 OpenAI 兼容模型列表接口 `GET /v1/models`：与 `/v1/chat/completions` 同一套 API 密钥鉴权，返回当前用户按分组权限可调用的模型（过滤口径与调用校验一致：模型启用 + free/vip 分组权限 + 至少绑定一个启用渠道，按名称排序，不泄露 `upstream_name` / 渠道等内部配置；不计费、不校验余额）；`relay` 路由抽出公共密钥鉴权函数供两个端点复用，原中转行为不变；无数据库改动；《API 调用文档》新增模型列表章节，同步更新接口规范例外清单与 README |
 | v0.7.1 | 2026-08-21 | 移除商汤 SenseNova Coding Plan 用量监控：运维页第五张卡片改为占位卡（与第六张一致）；前端删除商汤卡片、凭证设置抽屉的商汤区块、`sensenovaUsageData`/`sensenovaModelUsage` 类型与 `refreshSensenovaUsage` 等刷新逻辑；后端移除 sensenova 上游适配（删除 `services/upstream/sensenova.py`、`data/response_data/sensenova_data.json`）、`/operations` 接口的 sensenova 编排与 `sensenovaToken`/`sensenovaAccountId` 凭证参数、`token_utils` 的商汤过期解析，清理 `operations_config.json` 中商汤字段；全项目复查无 sensenova/商汤 残留 |
 | v0.7.0 | 2026-08-20 | 修复工坊联网搜索"一搜就结束任务"：根因是 web_search 以客户端函数工具透传，模型发出 tool_calls 后无人执行导致流中断。现由后端 `studio_agent_service` 实现 agent 工具循环——收到 tool_calls 后调阶跃 StepSearch MCP 端点真实执行搜索（新增 `search_service`，复用 STEPFUN_API_KEY，0.04 元/次计入 Step Plan Credit），结果以 role:tool 消息回传上游续写，对前端呈现为一条连续 SSE（多轮上限 5、方舟 encrypted_content 回传、非法 arguments 规范化、上游 400/422 与搜索失败均自动降级）；relay 抽出 `resolve_target` 供工坊循环复用，主链路行为不变；多轮 token 求和后统一进日志与用量统计（cost 仍为 0）；前端解析站内扩展事件 `agenticapi_search`，消息上方渲染搜索状态条（搜索中显示关键词 / 完成显示累计次数，随会话持久化）。已对全部 8 个上游渠道逐渠道实测通过 |
 | v0.6.0 | 2026-08-17 | 模型映射上线：`llm_models` 表新增 `upstream_name` 字段（实际请求上游用的模型名，为空时回退 `name`、原样透传）；中转链路转发上游前按 `upstream_name` 替换请求体 `model`，响应里再把 `model` 还原为对外名（非流式替换顶层字段，流式逐个 SSE 事件替换，未配置映射时零开销）；模型工坊复用同一中转链路自动生效；前端模型新增/编辑表单加上游模型名输入；同步更新数据库设计、API 规范文档与旧库升级 SQL |

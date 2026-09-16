@@ -18,23 +18,21 @@ def decode_jwt_payload(token: str) -> dict:
 def get_token_expiry(operation_dict: dict) -> dict:
     """
     获取4个渠道的token/凭证过期时间
-    返回格式：{"volcengine": "...", "coding_plan": "...", "stepfun": "...", "zai": "..."}
+    返回格式：{"volcengine": "...", "stepfun": "...", "zai": "...", "zai2": "..."}
     """
     expiry_dict = {}
 
-    # 【1&2】火山方舟 / 深势科技（同一个JWT token）
+    # 【1】火山方舟（凭证为深势 BohrClaw 平台的 JWT，查询走其接口）
     vol_token = operation_dict.get("bohrclaw_token", "")
     payload = decode_jwt_payload(vol_token)
     exp = payload.get("exp")
     if exp:
         exp_dt = datetime.fromtimestamp(exp).isoformat()
         expiry_dict["volcengine"] = exp_dt
-        expiry_dict["coding_plan"] = exp_dt
     else:
         expiry_dict["volcengine"] = None
-        expiry_dict["coding_plan"] = None
 
-    # 【3】阶跃星辰（access_token...refresh_token 格式，返回 refresh_token 的过期时间）
+    # 【2】阶跃星辰（access_token...refresh_token 格式，返回 refresh_token 的过期时间）
     step_token = operation_dict.get("stepfun_token", "")
     try:
         refresh_token = step_token.split("...")[1]
@@ -44,9 +42,14 @@ def get_token_expiry(operation_dict: dict) -> dict:
     except Exception:
         expiry_dict["stepfun"] = None
 
-    # 【4】智谱（ZAI_ANTHORIZATION，JWT 但 payload 不含 exp，返回 None 表示长期有效）
-    zai_payload = decode_jwt_payload(operation_dict.get("ZAI_ANTHORIZATION", ""))
+    # 【3】智谱（ZAI_API_KEY，非 JWT 且长期有效，恒返回 None）
+    zai_payload = decode_jwt_payload(operation_dict.get("ZAI_API_KEY", ""))
     exp = zai_payload.get("exp")
     expiry_dict["zai"] = datetime.fromtimestamp(exp).isoformat() if exp else None
+
+    # 【4】智谱账号二（ZAI_API_KEY_2，与【3】同理）
+    zai2_payload = decode_jwt_payload(operation_dict.get("ZAI_API_KEY_2", ""))
+    exp = zai2_payload.get("exp")
+    expiry_dict["zai2"] = datetime.fromtimestamp(exp).isoformat() if exp else None
 
     return expiry_dict

@@ -72,6 +72,25 @@ class AgentSettings(BaseSettings):
     AGENT_TITLE_MODEL: str = ""
 
 
+class ZaiOpsSettings(BaseSettings):
+    """智谱 Coding Plan 用量监控专用配置
+
+    API key 长期有效，替代原浏览器 Authorization JWT（登录态会过期，需定期重抓）。
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=str(ENV_FILE_PATH),
+        env_file_encoding='utf-8',
+        extra='ignore', # 忽略 .env 中未定义的变量
+    )
+
+    # 账号一（v3 套餐）的 Coding Plan API key
+    ZAI_API_KEY: str = ""
+    # 账号二（v2 套餐）的 Coding Plan API key
+    ZAI_API_KEY_2: str = ""
+
+
 agent_setting = AgentSettings()
 setting = MysqlSettings()
 server_setting = ServerSettings()
+zai_ops_setting = ZaiOpsSettings()

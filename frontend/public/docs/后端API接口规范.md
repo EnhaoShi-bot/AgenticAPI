@@ -20,8 +20,8 @@
 }
 ```
 
-> **例外**：`/v1/chat/completions`（对外中转）与 `/studio/chat`（模型工坊对话）走 OpenAI 报文风格——成功透传上游 JSON / SSE
-> 流，失败返回 `{"error": {message, type, code}}`，不套用本节格式。
+> **例外**：`/v1/chat/completions`（对外中转）、`/v1/models`（可用模型列表）与 `/studio/chat`（模型工坊对话）走 OpenAI 报文风格——成功透传上游 JSON / SSE
+> 流或返回 OpenAI 结构（`/v1/models` 返回 `{"object": "list", "data": [...]}`），失败返回 `{"error": {message, type, code}}`，不套用本节格式。
 
 | 字段        | 类型       | 说明                                                 |
 |-----------|----------|----------------------------------------------------|
@@ -260,8 +260,8 @@ if await channel_crud.get_id_by_name(db, channel_name):
 
 | 方法   | 路径                                    | 鉴权   | 说明                                                                     |
 |------|---------------------------------------|------|------------------------------------------------------------------------|
-| GET  | `/operations/get?refresh_channel=all` | 需管理员 | 获取上游用量数据，`refresh_channel` 可选 `vol` / `bohr` / `stepfun` / `zai` / `all`       |
-| POST | `/operations/upload`                  | 需管理员 | 更新上游运维凭证（Body 传 `brmToken` / `instanceId` / `stepToken` / `stepWebid` / `zaiAuthorization`） |
+| GET  | `/operations/get?refresh_channel=all` | 需管理员 | 获取上游用量数据，`refresh_channel` 可选 `vol` / `stepfun` / `zai` / `zai2` / `all`       |
+| POST | `/operations/upload`                  | 需管理员 | 更新上游运维凭证（Body 传 `brmToken` / `instanceId` / `stepToken` / `stepWebid`） |
 
 同样返回统一格式，`data` 为各渠道用量与 token 过期时间明细。
 

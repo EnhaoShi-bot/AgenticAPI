@@ -117,6 +117,38 @@ async def resolve_target(
     return model, channel_names
 
 
+async def list_models_for_user(db: AsyncSession, user: UserTabel) -> JSONResponse:
+    """
+    当前用户可用的模型列表（OpenAI Models 兼容格式，GET /v1/models 用）。
+
+    过滤口径与 resolve_target 的调用校验一致：模型启用 + 分组权限（free 用户
+    仅 free 模型，vip 全部）+ 至少绑定一个启用渠道，保证列出的模型都可实际调用；
+    不做余额校验（列表不扣费，余额不足在调用时返回 402）。
+
+    :return: OpenAI 格式 {"object": "list", "data": [{"id", "object", "created", "owned_by"}]}
+    """
+    enabled_channels = await channel_crud.get_enabled_names(db)
+    is_vip = user.user_group == "vip"
+    data = []
+    for row in await model_crud.get_all(db):
+        if not row.get("status"):
+            continue
+        if row.get("model_group") != "free" and not is_vip:
+            continue
+        channels = parse_json_list(row.get("channels"))
+        if not channels or not (set(channels) & enabled_channels):
+            continue
+        created = row.get("create_time")
+        data.append({
+            "id": row["name"],
+            "object": "model",
+            "created": int(created.timestamp()) if created else 0,
+            "owned_by": "agenticapi",
+        })
+    data.sort(key=lambda item: item["id"])
+    return JSONResponse({"object": "list", "data": data})
+
+
 async def chat_completions(
         db: AsyncSession,
         payload: dict,

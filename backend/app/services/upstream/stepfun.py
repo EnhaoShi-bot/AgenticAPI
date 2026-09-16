@@ -99,11 +99,14 @@ def fetch_stepfun_usage(operation_dict: dict, ops_json_path: Path) -> tuple[dict
         usage = {
             "stepfunFiveHourUsed": 0,
             "stepfunFiveHourTotal": 0,
+            "stepfunFiveHourResetAt": None,  # 阶跃该接口不返回任何重置时间
             "stepfunWeeklyUsed": 0,
             "stepfunWeeklyTotal": 0,
+            "stepfunWeeklyResetAt": None,
             "stepfunMonthlyUsed": int(safe_get(credit_buckets[0], "credit_total"))
             - int(safe_get(credit_buckets[0], "credit_residual")),
             "stepfunMonthlyTotal": int(safe_get(credit_buckets[0], "credit_total")),
+            "stepfunMonthlyResetAt": None,
         }
         return ok(usage, data), stepfun_token
     except httpx.HTTPError as e:

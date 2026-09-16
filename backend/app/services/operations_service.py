@@ -2,8 +2,8 @@
 
 import json
 
-from app.core.config import DATA_DIR
-from app.services.upstream import bohr, stepfun, volcengine, zai
+from app.core.config import DATA_DIR, zai_ops_setting
+from app.services.upstream import stepfun, volcengine, zai
 from app.utils.token_utils import get_token_expiry
 
 OPS_JSON_PATH = DATA_DIR / "operations_config.json"
@@ -26,18 +26,22 @@ def _save_raw(name: str, data) -> None:
 def get_operations(refresh_channel: str = "all") -> dict:
     """
     获取上游运维数据
-    :param refresh_channel: 刷新的渠道，可选值为 "vol"、"bohr"、"stepfun"、"zai" 或 "all"
+    :param refresh_channel: 刷新的渠道，可选值为 "vol"、"stepfun"、"zai"、"zai2" 或 "all"
     """
     re_dict = {
         "status": {},
         "token_expiry": {},
         "vol_usage": {},
-        "bohr_usage": {},
         "stepfun_usage": {},
         "zai_usage": {},
+        "zai2_usage": {},
     }
 
     operation_dict = _load_ops_config()
+
+    # 智谱改用 .env 里的 Coding Plan API key（长期有效），不再走 JSON 里的浏览器 JWT
+    operation_dict["ZAI_API_KEY"] = zai_ops_setting.ZAI_API_KEY
+    operation_dict["ZAI_API_KEY_2"] = zai_ops_setting.ZAI_API_KEY_2
 
     # 【1】火山方舟 Token Plan 用量
     if refresh_channel in ("vol", "all"):
@@ -47,15 +51,7 @@ def get_operations(refresh_channel: str = "all") -> dict:
         if result["raw"] is not None:
             _save_raw("vol", result["raw"])
 
-    # 【2】深势科技 Coding Plan 用量
-    if refresh_channel in ("bohr", "all"):
-        result = bohr.fetch_bohr_usage(operation_dict)
-        re_dict["status"]["bohr"] = result["status"]
-        re_dict["bohr_usage"] = result["usage"]
-        if result["raw"] is not None:
-            _save_raw("bohr", result["raw"])
-
-    # 【3】阶跃星辰 Step Plan 用量
+    # 【2】阶跃星辰 Step Plan 用量
     if refresh_channel in ("stepfun", "all"):
         result, current_token = stepfun.fetch_stepfun_usage(operation_dict, OPS_JSON_PATH)
         # 显式更新内存中的 token，确保后续 get_token_expiry 读到最新值
@@ -65,13 +61,21 @@ def get_operations(refresh_channel: str = "all") -> dict:
         if result["raw"] is not None:
             _save_raw("stepfun", result["raw"])
 
-    # 【4】智谱 GLM Coding Plan 用量
+    # 【3】智谱 GLM Coding Plan 用量（账号一 · v3，凭证为 .env 的 ZAI_API_KEY）
     if refresh_channel in ("zai", "all"):
-        result = zai.fetch_zai_usage(operation_dict)
+        result = zai.fetch_zai_usage(operation_dict, token_key="ZAI_API_KEY")
         re_dict["status"]["zai"] = result["status"]
         re_dict["zai_usage"] = result["usage"]
         if result["raw"] is not None:
             _save_raw("zai", result["raw"])
+
+    # 【4】智谱 GLM Coding Plan 用量（账号二 · v2，凭证为 .env 的 ZAI_API_KEY_2）
+    if refresh_channel in ("zai2", "all"):
+        result = zai.fetch_zai_usage(operation_dict, token_key="ZAI_API_KEY_2")
+        re_dict["status"]["zai2"] = result["status"]
+        re_dict["zai2_usage"] = result["usage"]
+        if result["raw"] is not None:
+            _save_raw("zai2", result["raw"])
 
     # 获取 token 过期时间
     re_dict["token_expiry"] = get_token_expiry(operation_dict)
@@ -83,7 +87,6 @@ def upload_settings(
     instance_id: str,
     step_token: str,
     step_webid: str,
-    zai_authorization: str,
 ) -> dict:
     """更新上游运维凭证到 operations_config.json"""
     try:
@@ -108,9 +111,6 @@ def upload_settings(
     if len(step_webid) > 5:
         data["stepfun_webid"] = step_webid
         message = message + "stepfun webid已更新；"
-    if len(zai_authorization) > 5:
-        data["ZAI_ANTHORIZATION"] = zai_authorization
-        message = message + "ZAI authorization已更新；"
 
     # 保存文件
     with open(OPS_JSON_PATH, "w", encoding="utf-8") as f:

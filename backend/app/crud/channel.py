@@ -18,6 +18,12 @@ async def get_all_names(db: AsyncSession) -> list[str]:
     return [r["channel_name"] for r in results.mappings().all()]
 
 
+async def get_enabled_names(db: AsyncSession) -> set[str]:
+    """获取启用状态（status=1）的渠道名集合（/v1/models 可用模型过滤用）"""
+    results = await db.execute(text("SELECT channel_name FROM llm_channels WHERE status = 1"))
+    return {r["channel_name"] for r in results.mappings().all()}
+
+
 async def get_id_by_name(db: AsyncSession, channel_name: str) -> int | None:
     """按渠道名称查询 id，不存在返回 None"""
     result = await db.execute(

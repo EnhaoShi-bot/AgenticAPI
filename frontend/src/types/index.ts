@@ -4,9 +4,9 @@ export type { channelInfoSchema } from './channel'
 export type { userInfoSchema, userAuthSchema } from './user'
 export type {
     volUsageData,
-    bohrUsageData,
     stepfunUsageData,
     zaiUsageData,
+    zai2UsageData,
     cookieSettings,
 } from './operations'
 export type {

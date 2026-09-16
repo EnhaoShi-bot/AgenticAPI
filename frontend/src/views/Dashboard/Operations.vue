@@ -40,27 +40,6 @@
         </template>
       </div>
 
-      <!-- 深势科技 Coding Plan -->
-      <div class="plan-card">
-        <div class="plan-card-head">
-          <div class="plan-card-title">
-            <span>深势科技 Coding Plan</span>
-            <a-tag size="small" color="green">Standard订阅</a-tag>
-          </div>
-          <a-button type="text" size="small" @click="refreshBohrUsage">
-            <template #icon><icon-sync/></template>
-            刷新
-          </a-button>
-        </div>
-        <a class="plan-link" href="https://bohrclaw.bohrium.com/coding-plan" target="_blank">
-          官方订阅链接<icon-launch/>
-        </a>
-        <div v-if="bohrUsage.status !== 'ok'" class="error-text">{{ bohrUsage.status }}</div>
-        <template v-else>
-          <plan-usage :usage="bohrUsage"/>
-        </template>
-      </div>
-
       <!-- 阶跃星辰 Step Plan -->
       <div class="plan-card">
         <div class="plan-card-head">
@@ -82,12 +61,12 @@
         </template>
       </div>
 
-      <!-- 智谱 GLM Coding Plan -->
+      <!-- 智谱 Coding Plan（v3 套餐） -->
       <div class="plan-card">
         <div class="plan-card-head">
           <div class="plan-card-title">
-            <span>智谱 GLM Coding Plan</span>
-            <a-tag size="small" color="blue">Lite订阅</a-tag>
+            <span>智谱Coding Plan</span>
+            <a-tag size="small" color="blue">v3 Lite</a-tag>
           </div>
           <a-button type="text" size="small" @click="refreshZaiUsage">
             <template #icon><icon-sync/></template>
@@ -103,21 +82,27 @@
         </template>
       </div>
 
-      <!-- 占位卡片（预留扩展位） -->
-      <div class="plan-card plan-card-placeholder">
-        <div class="placeholder-body">
-          <icon-plus/>
-          <span>敬请期待</span>
+      <!-- 智谱 Coding Plan（v2 套餐，上游仅返回百分比） -->
+      <div class="plan-card">
+        <div class="plan-card-head">
+          <div class="plan-card-title">
+            <span>智谱Coding Plan</span>
+            <a-tag size="small" color="blue">v2 Lite</a-tag>
+          </div>
+          <a-button type="text" size="small" @click="refreshZai2Usage">
+            <template #icon><icon-sync/></template>
+            刷新
+          </a-button>
         </div>
+        <a class="plan-link" href="https://open.bigmodel.cn" target="_blank">
+          官方订阅链接<icon-launch/>
+        </a>
+        <div v-if="zai2Usage.status !== 'ok'" class="error-text">{{ zai2Usage.status }}</div>
+        <template v-else>
+          <plan-usage :usage="zai2Usage"/>
+        </template>
       </div>
 
-      <!-- 占位卡片（预留扩展位） -->
-      <div class="plan-card plan-card-placeholder">
-        <div class="placeholder-body">
-          <icon-plus/>
-          <span>敬请期待</span>
-        </div>
-      </div>
     </div>
 
     <!-- 设置凭证抽屉（替代原自绘侧边栏） -->
@@ -146,16 +131,6 @@
             <a-input v-model="settings.stepWebid" placeholder="可不填" @change="saveSettings"/>
           </a-form-item>
         </div>
-
-        <a-divider/>
-
-        <!-- 智谱 -->
-        <div class="settings-section">
-          <h4>智谱 GLM Coding Plan</h4>
-          <a-form-item label="Authorization">
-            <a-input-password v-model="settings.zaiAuthorization" placeholder="浏览器请求头里的 Authorization 值（不带 Bearer）" @change="saveSettings"/>
-          </a-form-item>
-        </div>
       </a-form>
 
       <template #footer>
@@ -177,9 +152,9 @@ import {getErrorMessage} from '@/api/request'
 import type {
   cookieSettings,
   volUsageData,
-  bohrUsageData,
   stepfunUsageData,
-  zaiUsageData
+  zaiUsageData,
+  zai2UsageData
 } from '@/types'
 
 /* ═══════════════════════ 用量卡片公共部分（5小时/周/月进度条） ═══════════════════════ */
@@ -187,9 +162,10 @@ import type {
 interface planWindow {
   used: number
   quota: number
+  resetAt?: string | null
 }
 
-/** 单个时间窗的用量进度条：无限额时显示提示文字 */
+/** 单个时间窗的用量进度条：统一按百分比展示（保留 1 位小数），无限额时显示提示文字 */
 const planWindowRow = defineComponent({
   props: {
     label: {type: String, required: true},
@@ -200,12 +176,19 @@ const planWindowRow = defineComponent({
       if (!props.window.quota) {
         return h('div', {class: 'plan-row plan-row-none'}, `无${props.label}限额`)
       }
+      // v2 套餐后端给 百分比/100，其余给绝对值，used/quota 比值公式对两者通用
+      const percentText = ((props.window.used / props.window.quota) * 100).toFixed(1)
       const percent = Math.min(1, (props.window.used / props.window.quota) * 1)
       return h('div', {class: 'plan-row'}, [
         h('div', {class: 'plan-row-head'}, [
-          h('span', {class: 'plan-row-label'}, props.label),
-          h('span', {class: 'plan-row-value'},
-              `${props.window.used.toLocaleString()} / ${props.window.quota.toLocaleString()}`),
+          // 左侧：窗口标签 + 重置时间（上游给了才显示）；右侧：用量百分比统一对齐
+          h('div', {class: 'plan-row-meta'}, [
+            h('span', {class: 'plan-row-label'}, props.label),
+            ...(props.window.resetAt
+                ? [h('span', {class: 'plan-row-reset'}, `${props.window.resetAt} 重置`)]
+                : []),
+          ]),
+          h('span', {class: 'plan-row-value'}, `已用 ${percentText}%`),
         ]),
         h(Progress, {
           size: 'small' as const,
@@ -243,26 +226,10 @@ const settings = ref<cookieSettings>({
   instanceId: '',
   stepToken: '',
   stepWebid: '',
-  zaiAuthorization: '',
 })
 
 /* ═══════════════════════ 下面存储用量数据 ═══════════════════════ */
 const volUsage = reactive<volUsageData>({
-  status: "请刷新用量",
-  fiveHour: {
-    used: 0,
-    quota: 0,
-  },
-  weekly: {
-    used: 0,
-    quota: 0,
-  },
-  monthly: {
-    used: 0,
-    quota: 0,
-  },
-})
-const bohrUsage = reactive<bohrUsageData>({
   status: "请刷新用量",
   fiveHour: {
     used: 0,
@@ -293,6 +260,21 @@ const stepUsage = reactive<stepfunUsageData>({
   },
 })
 const zaiUsage = reactive<zaiUsageData>({
+  status: "请刷新用量",
+  fiveHour: {
+    used: 0,
+    quota: 0,
+  },
+  weekly: {
+    used: 0,
+    quota: 0,
+  },
+  monthly: {
+    used: 0,
+    quota: 0,
+  },
+})
+const zai2Usage = reactive<zai2UsageData>({
   status: "请刷新用量",
   fiveHour: {
     used: 0,
@@ -339,7 +321,6 @@ const uploadSettings = () => {
     instanceId: settings.value.instanceId,
     stepToken: settings.value.stepToken,
     stepWebid: settings.value.stepWebid,
-    zaiAuthorization: settings.value.zaiAuthorization,
   }).then(() => {
     Message.success('设置已上传')
   }).catch(err => {
@@ -361,31 +342,15 @@ const refreshVolUsage = () => {
       volUsage.fiveHour.quota = res.data.vol_usage.volFiveHourTotal
       volUsage.weekly.quota = res.data.vol_usage.volWeeklyTotal
       volUsage.monthly.quota = res.data.vol_usage.volMonthlyTotal
+      volUsage.fiveHour.resetAt = res.data.vol_usage.volFiveHourResetAt ?? null
+      volUsage.weekly.resetAt = res.data.vol_usage.volWeeklyResetAt ?? null
+      volUsage.monthly.resetAt = res.data.vol_usage.volMonthlyResetAt ?? null
     } else {
       volUsage.status = "数据刷新错误: " + res.data.status.vol
     }
   }).catch(err => {
     console.error(err)
     volUsage.status = getErrorMessage(err, '数据刷新失败')
-  })
-}
-
-const refreshBohrUsage = () => {
-  getOperations('bohr').then(res => {
-    if (res.data.status.bohr === "200") {
-      bohrUsage.status = "ok"
-      bohrUsage.fiveHour.used = res.data.bohr_usage.bohrFiveHourUsed
-      bohrUsage.weekly.used = res.data.bohr_usage.bohrWeeklyUsed
-      bohrUsage.monthly.used = res.data.bohr_usage.bohrMonthlyUsed
-      bohrUsage.fiveHour.quota = res.data.bohr_usage.bohrFiveHourTotal
-      bohrUsage.weekly.quota = res.data.bohr_usage.bohrWeeklyTotal
-      bohrUsage.monthly.quota = res.data.bohr_usage.bohrMonthlyTotal
-    } else {
-      bohrUsage.status = "数据刷新错误: " + res.data.status.bohr
-    }
-  }).catch(err => {
-    console.error(err)
-    bohrUsage.status = getErrorMessage(err, '数据刷新失败')
   })
 }
 
@@ -399,6 +364,9 @@ const refreshStepUsage = () => {
       stepUsage.fiveHour.quota = res.data.stepfun_usage.stepfunFiveHourTotal
       stepUsage.weekly.quota = res.data.stepfun_usage.stepfunWeeklyTotal
       stepUsage.monthly.quota = res.data.stepfun_usage.stepfunMonthlyTotal
+      stepUsage.fiveHour.resetAt = res.data.stepfun_usage.stepfunFiveHourResetAt ?? null
+      stepUsage.weekly.resetAt = res.data.stepfun_usage.stepfunWeeklyResetAt ?? null
+      stepUsage.monthly.resetAt = res.data.stepfun_usage.stepfunMonthlyResetAt ?? null
     } else {
       stepUsage.status = "数据刷新错误: " + res.data.status.stepfun
     }
@@ -418,12 +386,37 @@ const refreshZaiUsage = () => {
       zaiUsage.fiveHour.quota = res.data.zai_usage.zaiFiveHourTotal
       zaiUsage.weekly.quota = res.data.zai_usage.zaiWeeklyTotal
       zaiUsage.monthly.quota = res.data.zai_usage.zaiMonthlyTotal
+      zaiUsage.fiveHour.resetAt = res.data.zai_usage.zaiFiveHourResetAt ?? null
+      zaiUsage.weekly.resetAt = res.data.zai_usage.zaiWeeklyResetAt ?? null
+      zaiUsage.monthly.resetAt = res.data.zai_usage.zaiMonthlyResetAt ?? null
     } else {
       zaiUsage.status = "数据刷新错误: " + res.data.status.zai
     }
   }).catch(err => {
     console.error(err)
     zaiUsage.status = getErrorMessage(err, '数据刷新失败')
+  })
+}
+
+const refreshZai2Usage = () => {
+  getOperations('zai2').then(res => {
+    if (res.data.status.zai2 === "200") {
+      zai2Usage.status = "ok"
+      zai2Usage.fiveHour.used = res.data.zai2_usage.zaiFiveHourUsed
+      zai2Usage.weekly.used = res.data.zai2_usage.zaiWeeklyUsed
+      zai2Usage.monthly.used = res.data.zai2_usage.zaiMonthlyUsed
+      zai2Usage.fiveHour.quota = res.data.zai2_usage.zaiFiveHourTotal
+      zai2Usage.weekly.quota = res.data.zai2_usage.zaiWeeklyTotal
+      zai2Usage.monthly.quota = res.data.zai2_usage.zaiMonthlyTotal
+      zai2Usage.fiveHour.resetAt = res.data.zai2_usage.zaiFiveHourResetAt ?? null
+      zai2Usage.weekly.resetAt = res.data.zai2_usage.zaiWeeklyResetAt ?? null
+      zai2Usage.monthly.resetAt = res.data.zai2_usage.zaiMonthlyResetAt ?? null
+    } else {
+      zai2Usage.status = "数据刷新错误: " + res.data.status.zai2
+    }
+  }).catch(err => {
+    console.error(err)
+    zai2Usage.status = getErrorMessage(err, '数据刷新失败')
   })
 }
 
@@ -439,20 +432,11 @@ const refreshAllUsage = () => {
       volUsage.fiveHour.quota = res.data.vol_usage.volFiveHourTotal
       volUsage.weekly.quota = res.data.vol_usage.volWeeklyTotal
       volUsage.monthly.quota = res.data.vol_usage.volMonthlyTotal
+      volUsage.fiveHour.resetAt = res.data.vol_usage.volFiveHourResetAt ?? null
+      volUsage.weekly.resetAt = res.data.vol_usage.volWeeklyResetAt ?? null
+      volUsage.monthly.resetAt = res.data.vol_usage.volMonthlyResetAt ?? null
     } else {
       volUsage.status = "数据刷新错误: " + res.data.status.vol
-    }
-    // bohr
-    if (res.data.status.bohr === "200") {
-      bohrUsage.status = "ok"
-      bohrUsage.fiveHour.used = res.data.bohr_usage.bohrFiveHourUsed
-      bohrUsage.weekly.used = res.data.bohr_usage.bohrWeeklyUsed
-      bohrUsage.monthly.used = res.data.bohr_usage.bohrMonthlyUsed
-      bohrUsage.fiveHour.quota = res.data.bohr_usage.bohrFiveHourTotal
-      bohrUsage.weekly.quota = res.data.bohr_usage.bohrWeeklyTotal
-      bohrUsage.monthly.quota = res.data.bohr_usage.bohrMonthlyTotal
-    } else {
-      bohrUsage.status = "数据刷新错误: " + res.data.status.bohr
     }
     // stepfun
     if (res.data.status.stepfun === "200") {
@@ -463,6 +447,9 @@ const refreshAllUsage = () => {
       stepUsage.fiveHour.quota = res.data.stepfun_usage.stepfunFiveHourTotal
       stepUsage.weekly.quota = res.data.stepfun_usage.stepfunWeeklyTotal
       stepUsage.monthly.quota = res.data.stepfun_usage.stepfunMonthlyTotal
+      stepUsage.fiveHour.resetAt = res.data.stepfun_usage.stepfunFiveHourResetAt ?? null
+      stepUsage.weekly.resetAt = res.data.stepfun_usage.stepfunWeeklyResetAt ?? null
+      stepUsage.monthly.resetAt = res.data.stepfun_usage.stepfunMonthlyResetAt ?? null
     } else {
       stepUsage.status = "数据刷新错误: " + res.data.status.stepfun
     }
@@ -475,8 +462,26 @@ const refreshAllUsage = () => {
       zaiUsage.fiveHour.quota = res.data.zai_usage.zaiFiveHourTotal
       zaiUsage.weekly.quota = res.data.zai_usage.zaiWeeklyTotal
       zaiUsage.monthly.quota = res.data.zai_usage.zaiMonthlyTotal
+      zaiUsage.fiveHour.resetAt = res.data.zai_usage.zaiFiveHourResetAt ?? null
+      zaiUsage.weekly.resetAt = res.data.zai_usage.zaiWeeklyResetAt ?? null
+      zaiUsage.monthly.resetAt = res.data.zai_usage.zaiMonthlyResetAt ?? null
     } else {
       zaiUsage.status = "数据刷新错误: " + res.data.status.zai
+    }
+    // zai2
+    if (res.data.status.zai2 === "200") {
+      zai2Usage.status = "ok"
+      zai2Usage.fiveHour.used = res.data.zai2_usage.zaiFiveHourUsed
+      zai2Usage.weekly.used = res.data.zai2_usage.zaiWeeklyUsed
+      zai2Usage.monthly.used = res.data.zai2_usage.zaiMonthlyUsed
+      zai2Usage.fiveHour.quota = res.data.zai2_usage.zaiFiveHourTotal
+      zai2Usage.weekly.quota = res.data.zai2_usage.zaiWeeklyTotal
+      zai2Usage.monthly.quota = res.data.zai2_usage.zaiMonthlyTotal
+      zai2Usage.fiveHour.resetAt = res.data.zai2_usage.zaiFiveHourResetAt ?? null
+      zai2Usage.weekly.resetAt = res.data.zai2_usage.zaiWeeklyResetAt ?? null
+      zai2Usage.monthly.resetAt = res.data.zai2_usage.zaiMonthlyResetAt ?? null
+    } else {
+      zai2Usage.status = "数据刷新错误: " + res.data.status.zai2
     }
   }).catch(err => {
     console.error(err)
@@ -513,14 +518,8 @@ onMounted(() => {
 /* 订阅计划卡片 */
 .data-sections {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--space-4);
-}
-
-@media (max-width: 1024px) {
-  .data-sections {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 @media (max-width: 640px) {
@@ -566,23 +565,6 @@ onMounted(() => {
   text-decoration: underline;
 }
 
-/* 占位卡片（预留扩展位） */
-.plan-card-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-style: dashed;
-}
-
-.placeholder-body {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
-
 /* 用量行（进度条），由渲染函数生成 */
 :deep(.plan-rows) {
   display: flex;
@@ -596,6 +578,18 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--space-1);
+}
+
+:deep(.plan-row-meta) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+:deep(.plan-row-reset) {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 :deep(.plan-row-label) {

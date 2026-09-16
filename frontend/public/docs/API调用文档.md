@@ -4,13 +4,13 @@
 
 ## 简介
 
-本站对外提供 **OpenAI Chat Completions 兼容**的中转接口：你可以在 Cherry Studio、ChatBox、LobeChat
+本站对外提供 **OpenAI Chat Completions 兼容**的中转接口与 **OpenAI Models 兼容**的模型列表接口：你可以在 Cherry Studio、ChatBox、LobeChat
 等第三方 AI 工具中把本站当作一个 "OpenAI" 来配置，也可以用 OpenAI 官方 SDK / curl 直接调用，
 用本站密钥（`sk-` 开头）访问站内接入的所有模型。
 
-> **关于接口地址**：本文以本机部署的默认地址 `http://localhost:2027` 为例。
+> **关于接口地址**：本文以线上部署地址 `https://platform.shienhao.cn` 为例（本地部署时对应 `http://localhost:2027`）。
 > 站点部署到公网后，请以站内实际展示的地址为准（控制台-秘钥页、模型广场的模型详情面板都会自动展示当前真实地址），
-> 把下文中的 `http://localhost:2027` 替换为实际地址即可。
+> 若使用本地部署，把下文中的 `https://platform.shienhao.cn` 替换为 `http://localhost:2027` 即可。
 
 ## 快速开始
 
@@ -19,7 +19,7 @@
 1. **注册并登录**：点击导航栏右上角「注册」创建账号（也可以用「访客」体验，访客同样可以调用接口）；
 2. **创建 API 密钥**：进入「控制台 → 秘钥」页面，填写备注名创建密钥（`sk-` 开头，每个账号最多 5 个）；
 3. **发起调用**：按下文示例，携带 `Authorization: Bearer sk-xxx` 请求
-   `POST http://localhost:2027/v1/chat/completions`。
+   `POST https://platform.shienhao.cn/v1/chat/completions`。
 
 ## 接入信息
 
@@ -27,16 +27,16 @@
 
 | 项目      | 值                                  | 说明                                          |
 |---------|------------------------------------|---------------------------------------------|
-| Base URL | `http://localhost:2027/v1`         | OpenAI 兼容基地址，部署后替换为实际地址                |
+| Base URL | `https://platform.shienhao.cn/v1`         | OpenAI 兼容基地址，部署后替换为实际地址                |
 | API Key  | `sk-xxxxxxxx`                      | 在「控制台 → 秘钥」页创建                          |
-| 模型名称    | 如 `glm-4.7`                        | 见模型广场的模型列表，调用时填在 `model` 字段             |
+| 模型名称    | 如 `glm-4.7`                        | 见模型广场，或调 `GET /v1/models` 获取你可用的模型，调用时填在 `model` 字段 |
 
 ## 调用示例
 
 ### curl（非流式）
 
 ```sh
-curl http://localhost:2027/v1/chat/completions \
+curl https://platform.shienhao.cn/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sk-你的API密钥" \
   -d '{
@@ -53,7 +53,7 @@ curl http://localhost:2027/v1/chat/completions \
 加 `"stream": true` 即为流式响应（SSE，逐块返回），建议加 `-N` 关闭 curl 缓冲实时查看：
 
 ```sh
-curl -N http://localhost:2027/v1/chat/completions \
+curl -N https://platform.shienhao.cn/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sk-你的API密钥" \
   -d '{
@@ -82,7 +82,7 @@ data: [DONE]
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="http://localhost:2027/v1",   # 部署后替换为实际地址
+    base_url="https://platform.shienhao.cn/v1",   # 部署后替换为实际地址
     api_key="sk-你的API密钥",
 )
 
@@ -117,7 +117,7 @@ for chunk in stream:
 import OpenAI from "openai";
 
 const client = new OpenAI({
-  baseURL: "http://localhost:2027/v1",   // 部署后替换为实际地址
+  baseURL: "https://platform.shienhao.cn/v1",   // 部署后替换为实际地址
   apiKey: "sk-你的API密钥",
 });
 
@@ -152,9 +152,44 @@ print(response.choices[0].message.content)
 Cherry Studio、ChatBox、LobeChat、沉浸式翻译等支持自定义 OpenAI 接口的工具均可接入：
 
 1. 在工具的模型服务商设置中选择「自定义 / OpenAI 兼容」类型；
-2. **API 地址**填 `http://localhost:2027/v1`（部署后替换为实际地址）；
+2. **API 地址**填 `https://platform.shienhao.cn/v1`（部署后替换为实际地址）；
 3. **API 密钥**填你的 `sk-` 密钥；
-4. 手动添加模型：模型名填模型广场中展示的名称（如 `glm-4.7`）。
+4. 添加模型：若工具支持「获取模型列表 / 自动发现」，会通过 `GET /v1/models` 自动拉取你可用的模型；
+   否则手动添加，模型名填模型广场中展示的名称（如 `glm-4.7`）。
+
+## 模型列表接口（GET /v1/models）
+
+返回**当前密钥所属用户可调用**的模型列表，OpenAI Models 兼容格式，直接把 `data[].id` 作为
+`model` 字段的值即可调用。列表已按你的分组权限过滤（`free` 用户仅返回免费模型，`vip` 返回全部），
+已停用的模型与渠道全部停用的模型不会出现，按模型名排序。
+
+```sh
+curl https://platform.shienhao.cn/v1/models \
+  -H "Authorization: Bearer sk-你的API密钥"
+```
+
+响应示例：
+
+```json
+{
+  "object": "list",
+  "data": [
+    {"id": "glm-4.7", "object": "model", "created": 1755369600, "owned_by": "agenticapi"},
+    {"id": "step-3.7", "object": "model", "created": 1755369601, "owned_by": "agenticapi"}
+  ]
+}
+```
+
+OpenAI SDK 同样支持：
+
+```python
+models = client.models.list()
+for m in models.data:
+    print(m.id)   # 模型名，可直接用于 chat.completions 的 model 参数
+```
+
+> 鉴权与错误格式同 `/v1/chat/completions`：密钥无效返回 401，账号被封禁返回 403。
+> 查询列表不校验余额、不产生费用。
 
 ## 请求参数
 
@@ -162,7 +197,7 @@ Cherry Studio、ChatBox、LobeChat、沉浸式翻译等支持自定义 OpenAI �
 
 | 参数            | 类型      | 必填 | 说明                                              |
 |---------------|---------|----|---------------------------------------------------|
-| `model`       | string  | 是 | 模型名称，见模型广场列表                             |
+| `model`       | string  | 是 | 模型名称，见模型广场或 `GET /v1/models` 返回的列表     |
 | `messages`    | array   | 是 | 对话消息数组，`role` 支持 `system` / `user` / `assistant` |
 | `stream`      | boolean | 否 | 是否流式返回，默认 `false`                          |
 | `max_tokens`  | integer | 否 | 最大生成 token 数（不超过模型配置的上限）              |

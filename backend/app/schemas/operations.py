@@ -9,8 +9,9 @@ class OperationsResponse(BaseModel):
     status: dict = {}
     token_expiry: dict = {}
     vol_usage: dict = {}
-    bohr_usage: dict = {}
     stepfun_usage: dict = {}
+    zai_usage: dict = {}
+    zai2_usage: dict = {}
 
 
 class MessageResponse(BaseModel):

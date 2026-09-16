@@ -2,7 +2,7 @@
 
 import httpx
 
-from app.services.upstream.base import http_error, network_error, ok
+from app.services.upstream.base import http_error, network_error, ok, to_reset_at
 from app.utils.json_utils import safe_get
 
 
@@ -21,10 +21,13 @@ def fetch_vol_usage(operation_dict: dict) -> dict:
         usage = {
             "volFiveHourUsed": safe_get(data, "usage", "afp_five_hour", "used"),
             "volFiveHourTotal": safe_get(data, "usage", "afp_five_hour", "quota"),
+            "volFiveHourResetAt": to_reset_at(safe_get(data, "usage", "afp_five_hour", "reset_time")),
             "volWeeklyUsed": safe_get(data, "usage", "afp_weekly", "used"),
             "volWeeklyTotal": safe_get(data, "usage", "afp_weekly", "quota"),
+            "volWeeklyResetAt": to_reset_at(safe_get(data, "usage", "afp_weekly", "reset_time")),
             "volMonthlyUsed": safe_get(data, "usage", "afp", "used"),
             "volMonthlyTotal": safe_get(data, "usage", "afp", "quota"),
+            "volMonthlyResetAt": to_reset_at(safe_get(data, "usage", "afp", "reset_time")),
         }
         return ok(usage, data)
     except httpx.HTTPError as e:
