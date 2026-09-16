@@ -220,6 +220,17 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 2027
 > `ssh -N -L 13306:127.0.0.1:3306 sehwin`，再把 `backend/.env` 的 `MYSQL_PORT` 从 `3306`（本地库）改为
 > `13306` 即可；两个端口互不冲突，本地库与云端库可并存、随时切换。注意：此模式下本地调试的读写会直接作用于生产数据。
 
+> **本地与云端生产环境的差异**（云端部署于 `sehwin` 服务器 `/home/ubuntu/projects/AgenticAPI`，对外域名
+> `platform.shienhao.cn`）：
+>
+> | 维度 | 本地开发 | 云端生产 |
+> |---|---|---|
+> | 数据库 | 本机 MySQL（`3306`，或隧道 `13306` 连云端） | Docker MySQL 8.0，仅绑服务器回环 `127.0.0.1:3306`，公网不可直连 |
+> | 后端 | 手动 uvicorn（conda `agent` 环境），`DEBUG=True` | systemd 服务 `agenticapi.service`（conda `AgenticAPI` 环境），`DEBUG=False` |
+> | 前端 | Vite 开发服务器 5173（`/api` 代理到 2027） | 仅部署 `npm run build` 产物 `dist`，nginx 托管并将 `/api` 反代到 2027 |
+> | 对外暴露 | 无（全部只监听本机回环） | nginx + HTTPS（80 强制跳转 443） |
+> | 数据 | 开发数据（本地库） | 生产数据（真实用户、密钥与计费） |
+
 > **已有旧数据库的升级说明**：启动时的自动建表只创建不存在的表，不会给已存在的表加列。若你的 `user`
 > 表是旧版本建的，需手动补齐缺失列（新装环境无需执行）：
 >
