@@ -90,7 +90,24 @@ class ZaiOpsSettings(BaseSettings):
     ZAI_API_KEY_2: str = ""
 
 
+class CommandCodeOpsSettings(BaseSettings):
+    """CommandCode TokenPlan 用量监控专用配置
+
+    API key 长期有效，经 x-api-key 头鉴权（Authorization: Bearer 会被上游拒绝）。
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=str(ENV_FILE_PATH),
+        env_file_encoding='utf-8',
+        extra='ignore', # 忽略 .env 中未定义的变量
+    )
+
+    # CommandCode 的 TokenPlan API key
+    COMMANDCODE_API_KEY: str = ""
+
+
 agent_setting = AgentSettings()
 setting = MysqlSettings()
 server_setting = ServerSettings()
 zai_ops_setting = ZaiOpsSettings()
+commandcode_ops_setting = CommandCodeOpsSettings()

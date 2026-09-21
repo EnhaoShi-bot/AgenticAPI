@@ -35,6 +35,14 @@ export interface zai2UsageData {
     monthly: usageWindow
 }
 
+// CommandCode 渠道的用量数据：月度总额度上游不返回，由后端按 GOAT 套餐 70 写死并换算已用量
+export interface commandcodeUsageData {
+    status: string;
+    fiveHour: usageWindow
+    weekly: usageWindow
+    monthly: usageWindow
+}
+
 // 数据接口定义，向后端发送cookie等信息
 // 注：智谱凭证已迁移到后端 .env（ZAI_API_KEY / ZAI_API_KEY_2），不再经由前端上传
 export interface cookieSettings {

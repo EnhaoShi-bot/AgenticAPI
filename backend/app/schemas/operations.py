@@ -12,6 +12,7 @@ class OperationsResponse(BaseModel):
     stepfun_usage: dict = {}
     zai_usage: dict = {}
     zai2_usage: dict = {}
+    cc_usage: dict = {}
 
 
 class MessageResponse(BaseModel):

@@ -61,6 +61,27 @@
         </template>
       </div>
 
+      <!-- Command Code TokenPlan -->
+      <div class="plan-card plan-card-cc">
+        <div class="plan-card-head">
+          <div class="plan-card-title">
+            <span>Command Code</span>
+            <a-tag size="small" color="orange">GOAT订阅</a-tag>
+          </div>
+          <a-button type="text" size="small" @click="refreshCcUsage">
+            <template #icon><icon-sync/></template>
+            刷新
+          </a-button>
+        </div>
+        <a class="plan-link" href="https://commandcode.ai" target="_blank">
+          官方订阅链接<icon-launch/>
+        </a>
+        <div v-if="ccUsage.status !== 'ok'" class="error-text">{{ ccUsage.status }}</div>
+        <template v-else>
+          <plan-usage :usage="ccUsage"/>
+        </template>
+      </div>
+
       <!-- 智谱 Coding Plan（v3 套餐） -->
       <div class="plan-card plan-card-zai">
         <div class="plan-card-head">
@@ -102,6 +123,9 @@
           <plan-usage :usage="zai2Usage"/>
         </template>
       </div>
+
+      <!-- 预留卡位：第 2 行第 3 列，后续接入新渠道时替换 -->
+      <div class="plan-card plan-card-placeholder"></div>
 
     </div>
 
@@ -154,7 +178,8 @@ import type {
   volUsageData,
   stepfunUsageData,
   zaiUsageData,
-  zai2UsageData
+  zai2UsageData,
+  commandcodeUsageData
 } from '@/types'
 
 /* ═══════════════════════ 用量卡片公共部分（5小时/周/月进度条） ═══════════════════════ */
@@ -275,6 +300,21 @@ const zaiUsage = reactive<zaiUsageData>({
   },
 })
 const zai2Usage = reactive<zai2UsageData>({
+  status: "请刷新用量",
+  fiveHour: {
+    used: 0,
+    quota: 0,
+  },
+  weekly: {
+    used: 0,
+    quota: 0,
+  },
+  monthly: {
+    used: 0,
+    quota: 0,
+  },
+})
+const ccUsage = reactive<commandcodeUsageData>({
   status: "请刷新用量",
   fiveHour: {
     used: 0,
@@ -420,6 +460,28 @@ const refreshZai2Usage = () => {
   })
 }
 
+const refreshCcUsage = () => {
+  getOperations('cc').then(res => {
+    if (res.data.status.cc === "200") {
+      ccUsage.status = "ok"
+      ccUsage.fiveHour.used = res.data.cc_usage.ccFiveHourUsed
+      ccUsage.weekly.used = res.data.cc_usage.ccWeeklyUsed
+      ccUsage.fiveHour.quota = res.data.cc_usage.ccFiveHourTotal
+      ccUsage.weekly.quota = res.data.cc_usage.ccWeeklyTotal
+      ccUsage.fiveHour.resetAt = res.data.cc_usage.ccFiveHourResetAt ?? null
+      ccUsage.weekly.resetAt = res.data.cc_usage.ccWeeklyResetAt ?? null
+      ccUsage.monthly.used = res.data.cc_usage.ccMonthlyUsed
+      ccUsage.monthly.quota = res.data.cc_usage.ccMonthlyTotal
+      ccUsage.monthly.resetAt = res.data.cc_usage.ccMonthlyResetAt ?? null
+    } else {
+      ccUsage.status = "数据刷新错误: " + res.data.status.cc
+    }
+  }).catch(err => {
+    console.error(err)
+    ccUsage.status = getErrorMessage(err, '数据刷新失败')
+  })
+}
+
 const refreshAllUsage = () => {
   loading.value = true
   getOperations('all').then(res => {
@@ -483,6 +545,21 @@ const refreshAllUsage = () => {
     } else {
       zai2Usage.status = "数据刷新错误: " + res.data.status.zai2
     }
+    // cc
+    if (res.data.status.cc === "200") {
+      ccUsage.status = "ok"
+      ccUsage.fiveHour.used = res.data.cc_usage.ccFiveHourUsed
+      ccUsage.weekly.used = res.data.cc_usage.ccWeeklyUsed
+      ccUsage.fiveHour.quota = res.data.cc_usage.ccFiveHourTotal
+      ccUsage.weekly.quota = res.data.cc_usage.ccWeeklyTotal
+      ccUsage.fiveHour.resetAt = res.data.cc_usage.ccFiveHourResetAt ?? null
+      ccUsage.weekly.resetAt = res.data.cc_usage.ccWeeklyResetAt ?? null
+      ccUsage.monthly.used = res.data.cc_usage.ccMonthlyUsed
+      ccUsage.monthly.quota = res.data.cc_usage.ccMonthlyTotal
+      ccUsage.monthly.resetAt = res.data.cc_usage.ccMonthlyResetAt ?? null
+    } else {
+      ccUsage.status = "数据刷新错误: " + res.data.status.cc
+    }
   }).catch(err => {
     console.error(err)
     Message.error(getErrorMessage(err, '数据刷新失败'))
@@ -518,8 +595,14 @@ onMounted(() => {
 /* 订阅计划卡片 */
 .data-sections {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-4);
+}
+
+@media (max-width: 1024px) {
+  .data-sections {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 640px) {
@@ -543,11 +626,23 @@ onMounted(() => {
   box-shadow: var(--shadow-md);
 }
 
-/* 各渠道强调色：火山主蓝 / 阶跃紫 / 智谱 v3 青 / 智谱 v2 金 */
+/* 各渠道强调色：火山主蓝 / 阶跃紫 / 智谱 v3 青 / 智谱 v2 金 / CommandCode 橘红 */
 .plan-card-vol { --plan-accent: var(--color-primary); }
 .plan-card-step { --plan-accent: var(--color-violet); }
 .plan-card-zai { --plan-accent: var(--color-cyan); }
 .plan-card-zai2 { --plan-accent: var(--color-gold); }
+.plan-card-cc { --plan-accent: var(--color-vermilion); }
+
+/* 预留卡位：虚线框占位，补足网格空缺（无数据、无交互） */
+.plan-card-placeholder {
+  border: 1px dashed var(--color-gray-300);
+  background-color: var(--color-gray-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
 
 .plan-card-head {
   display: flex;

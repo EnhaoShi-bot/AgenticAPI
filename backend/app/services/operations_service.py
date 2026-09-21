@@ -2,8 +2,8 @@
 
 import json
 
-from app.core.config import DATA_DIR, zai_ops_setting
-from app.services.upstream import stepfun, volcengine, zai
+from app.core.config import DATA_DIR, commandcode_ops_setting, zai_ops_setting
+from app.services.upstream import commandcode, stepfun, volcengine, zai
 from app.utils.token_utils import get_token_expiry
 
 OPS_JSON_PATH = DATA_DIR / "operations_config.json"
@@ -35,6 +35,7 @@ def get_operations(refresh_channel: str = "all") -> dict:
         "stepfun_usage": {},
         "zai_usage": {},
         "zai2_usage": {},
+        "cc_usage": {},
     }
 
     operation_dict = _load_ops_config()
@@ -42,6 +43,9 @@ def get_operations(refresh_channel: str = "all") -> dict:
     # 智谱改用 .env 里的 Coding Plan API key（长期有效），不再走 JSON 里的浏览器 JWT
     operation_dict["ZAI_API_KEY"] = zai_ops_setting.ZAI_API_KEY
     operation_dict["ZAI_API_KEY_2"] = zai_ops_setting.ZAI_API_KEY_2
+
+    # CommandCode 的 API key 同样在 .env（长期有效）
+    operation_dict["commandcode_api_key"] = commandcode_ops_setting.COMMANDCODE_API_KEY
 
     # 【1】火山方舟 Token Plan 用量
     if refresh_channel in ("vol", "all"):
@@ -76,6 +80,14 @@ def get_operations(refresh_channel: str = "all") -> dict:
         re_dict["zai2_usage"] = result["usage"]
         if result["raw"] is not None:
             _save_raw("zai2", result["raw"])
+
+    # 【5】CommandCode TokenPlan 用量（凭证为 .env 的 COMMANDCODE_API_KEY）
+    if refresh_channel in ("cc", "all"):
+        result = commandcode.fetch_commandcode_usage(operation_dict)
+        re_dict["status"]["cc"] = result["status"]
+        re_dict["cc_usage"] = result["usage"]
+        if result["raw"] is not None:
+            _save_raw("cc", result["raw"])
 
     # 获取 token 过期时间
     re_dict["token_expiry"] = get_token_expiry(operation_dict)
