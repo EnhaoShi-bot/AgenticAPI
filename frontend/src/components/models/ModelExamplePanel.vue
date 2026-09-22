@@ -59,23 +59,14 @@
         </template>
         复制示例
       </a-button>
-
-      <a-button size="small" @click="testConnection">
-        <template #icon>
-          <icon-thunderbolt/>
-        </template>
-        测试连接
-      </a-button>
     </div>
+    <!-- 模型连通性拨测已移到模型广场卡片右上角的闪电按钮（原"测试连接"入口） -->
   </div>
 </template>
 
 <script setup lang="ts">
 import {computed, ref} from 'vue'
-import {Message} from '@arco-design/web-vue'
-import {testModel} from '@/api/models'
 import {getKeys} from '@/api/keys'
-import {getErrorMessage} from '@/api/request'
 import {useSiteStore} from '@/stores/site'
 import {useUserStore} from '@/stores/user'
 import {copyText} from '@/utils/feedback'
@@ -193,23 +184,6 @@ const exampleCode = computed(() => exampleLang.value === 'curl' ? exampleCurl.va
 // 复制当前语言的调用示例
 const copyExampleCode = () => {
   copyText(exampleCode.value, '示例已复制')
-}
-
-/** ═══════════ 测试连接（拨测上游渠道） ═══════════ */
-
-const testConnection = async () => {
-  const modelName = props.model?.name
-  if (!modelName) {
-    Message.error('未选择模型')
-    return
-  }
-  try {
-    await testModel(modelName)
-    Message.success('模型测试成功，上游渠道连接正常')
-  } catch (err) {
-    console.error(err)
-    Message.error(getErrorMessage(err, '模型测试失败，上游渠道连接异常'))
-  }
 }
 </script>
 

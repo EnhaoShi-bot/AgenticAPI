@@ -45,9 +45,10 @@ async def test_model(
         db: AsyncSession = Depends(get_db),
         user=Depends(get_current_user),
 ):
-    """模型拨测，无需管理员权限，普通用户可调用，走公网接口，正常扣费、记录日志"""
+    """模型拨测，无需管理员权限，普通用户可调用，走公网接口，正常扣费、记录日志。
+    分组权限在服务层前置校验：free 用户只能拨 free 分组模型，vip 可拨全部"""
 
-    response = await model_service.test_model(db, model_name, user.id)
+    response = await model_service.test_model(db, model_name, user)
 
     return success_response(message="模型响应成功", data=response)
 

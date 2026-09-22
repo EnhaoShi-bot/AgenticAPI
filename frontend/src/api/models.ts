@@ -21,8 +21,8 @@ export function updateModel(modelName: string, data: Partial<modelInfoSchema>) {
 export function deleteModel(modelName: string) {
     return request.delete(`/models/${encodeURIComponent(modelName)}`)
 }
-/** 拨测模型（按 name 定位） */
+/** 拨测模型（按 name 定位；单独放宽超时与后端 180s 抓测超时对齐，覆盖全局 axios 的 30s） */
 export function testModel(modelName: string) {
-    return request.get(`/models/test/${encodeURIComponent(modelName)}`)
+    return request.get(`/models/test/${encodeURIComponent(modelName)}`, {timeout: 200000})
 }
 

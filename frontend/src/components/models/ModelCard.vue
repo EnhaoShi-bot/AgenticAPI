@@ -25,6 +25,13 @@
       </div>
 
       <div class="model-actions">
+        <a-tooltip v-if="probeVisible" :content="probeTooltip" position="top">
+          <a-button type="text" size="mini" :loading="testing" :class="probeIconClass" @click="handleProbe">
+            <template #icon>
+              <icon-thunderbolt/>
+            </template>
+          </a-button>
+        </a-tooltip>
         <a-tooltip content="复制模型名" position="top">
           <a-button type="text" size="mini" @click="copyText(model.name, '模型名称已复制')">
             <template #icon>
@@ -72,17 +79,87 @@
 </template>
 
 <script setup lang="ts">
+import {computed, ref} from 'vue'
+import {Message} from '@arco-design/web-vue'
 import LobeIcon from '@/components/common/LobeIcon.vue'
+import {testModel} from '@/api/models'
+import {getErrorMessage} from '@/api/request'
+import {useUserStore} from '@/stores/user'
 import {copyText} from '@/utils/feedback'
 import {tagColorByName} from '@/utils/colors'
 import {groupTagColor, groupTagName, splitLabel} from '@/utils/model'
 import type {modelInfoSchema} from '@/types'
 
-defineProps<{
+const props = defineProps<{
   model: modelInfoSchema
 }>()
 
 const emit = defineEmits<{ detail: [model: modelInfoSchema] }>()
+
+/** ═══════════ 拨测（卡片右上角闪电按钮） ═══════════ */
+
+const userStore = useUserStore()
+
+// 闪电按钮可见性：模型启用 + 未登录也展示（点击唤起登录框，保证入口不被埋掉）；
+// 仅"已登录但分组无权限"时隐藏——vip 全部可拨，free（含访客）只能拨 free 分组模型
+const probeVisible = computed(() =>
+    !!props.model.status
+    && (!userStore.isLoggedIn
+        || userStore.userInfo?.userGroup === 'vip'
+        || props.model.modelGroup === 'free'))
+
+// 实际能否执行拨测（点击时的闸门：需登录且分组有权限）
+const canProbe = computed(() =>
+    userStore.isLoggedIn
+    && !!props.model.status
+    && (userStore.userInfo?.userGroup === 'vip' || props.model.modelGroup === 'free'))
+
+const testing = ref(false)
+// 拨测结果短暂高亮图标（ok 绿 / fail 红），2.5s 后回落为中性色
+const probeState = ref<'' | 'ok' | 'fail'>('')
+let probeTimer: number | undefined
+
+const probeTooltip = computed(() => {
+  if (!userStore.isLoggedIn) return '测试模型连接（需登录）'
+  if (testing.value) return '拨测中…'
+  if (probeState.value === 'ok') return '拨测成功'
+  if (probeState.value === 'fail') return '拨测失败，点我重试'
+  return '测试模型连接'
+})
+
+const probeIconClass = computed(() => ({
+  'probe-ok': probeState.value === 'ok',
+  'probe-fail': probeState.value === 'fail',
+}))
+
+async function handleProbe() {
+  if (testing.value || !props.model.name) return
+  // 未登录：唤起登录弹窗，登录成功后可再点一次拨测
+  if (!userStore.isLoggedIn) {
+    Message.info('拨测需要先登录')
+    userStore.openAuthDialog('login')
+    return
+  }
+  if (!canProbe.value) return
+  testing.value = true
+  probeState.value = ''
+  try {
+    const res = await testModel(props.model.name)
+    const latency = (res.data as { latencyMs?: number } | undefined)?.latencyMs
+    probeState.value = 'ok'
+    const sec = latency != null ? ` · ${(latency / 1000).toFixed(1)}s` : ''
+    Message.success(`拨测成功${sec}，${props.model.name} 可正常调用`)
+  } catch (err) {
+    probeState.value = 'fail'
+    Message.error(getErrorMessage(err, '拨测失败，请稍后重试'))
+  } finally {
+    testing.value = false
+    window.clearTimeout(probeTimer)
+    probeTimer = window.setTimeout(() => {
+      probeState.value = ''
+    }, 2500)
+  }
+}
 </script>
 
 <style scoped>
@@ -171,8 +248,18 @@ const emit = defineEmits<{ detail: [model: modelInfoSchema] }>()
 
 .model-actions {
   display: flex;
+  align-items: center;
   flex-shrink: 0;
   margin-right: -4px;
+}
+
+/* 拨测按钮结果反馈：成功短暂变绿、失败短暂变红（默认继承中性文字色） */
+.model-actions .probe-ok {
+  color: var(--color-success);
+}
+
+.model-actions .probe-fail {
+  color: var(--color-error);
 }
 
 /* 价格区 */

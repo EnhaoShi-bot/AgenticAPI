@@ -346,7 +346,8 @@ const sections = [
   {label: '开发文档'},
 ]
 
-// ── 模型广场展示卡：优先取真实数据的前 4 个，无数据时用演示数据 ──
+// ── 模型广场展示卡：有真实数据时只展示"启用的"前 4 个；
+//    仅当站点完全没有任何模型（全新部署）时才退回演示数据占位 ──
 const demoModels = [
   {name: 'qwen-plus', icon: 'Qwen', group: 'free', inputPrice: '0.80', cachePrice: '0.00', outputPrice: '2.00'},
   {name: 'gpt-4o', icon: 'OpenAI', group: 'vip', inputPrice: '12.50', cachePrice: '0.00', outputPrice: '50.00'},
@@ -372,8 +373,11 @@ const monitorSeries = [
 ]
 
 const showFreeModels = computed(() => {
-  const real = modelListStore.totalModelList
-      .filter(m => m.modelGroup === 'free')
+  const all = modelListStore.totalModelList
+  // 全新站点（无任何模型）才用演示数据占位，避免真实数据与演示卡片混排
+  if (all.length === 0) return demoModels.filter(m => m.group === 'free')
+  return all
+      .filter(m => m.modelGroup === 'free' && m.status)
       .slice(0, 4)
       .map(m => ({
         name: m.name,
@@ -383,13 +387,14 @@ const showFreeModels = computed(() => {
         cachePrice: String(parseFloat(String(m.cachePrice)) || 0),
         outputPrice: String(parseFloat(String(m.outputPrice)) || 0),
       }))
-  return real.length >= 4 ? real : demoModels
 })
 
 
 const showVipModels = computed(() => {
-  const real = modelListStore.totalModelList
-      .filter(m => m.modelGroup === 'vip')
+  const all = modelListStore.totalModelList
+  if (all.length === 0) return demoModels.filter(m => m.group === 'vip')
+  return all
+      .filter(m => m.modelGroup === 'vip' && m.status)
       .slice(0, 4)
       .map(m => ({
         name: m.name,
@@ -399,7 +404,6 @@ const showVipModels = computed(() => {
         cachePrice: String(parseFloat(String(m.cachePrice)) || 0),
         outputPrice: String(parseFloat(String(m.outputPrice)) || 0),
       }))
-  return real.length >= 4 ? real : demoModels
 })
 
 

@@ -119,14 +119,19 @@ async def get_user_by_token(db: AsyncSession, token: str) -> Optional[UserTabel]
 
 async def get_api_key_by_user_id(db: AsyncSession, user_id: int) -> Optional[ApiKeyTable]:
     """
-    获取一个当前用户的API KEY，没有就创建一个
+    获取一个当前用户的API KEY，没有就创建一个。
+    优先返回启用状态的密钥：拨测等自调用场景若拿到禁用密钥，中转只会回 401，
+    表现为"渠道异常"的误报。
     """
     query = select(ApiKeyTable).where(ApiKeyTable.user_id == user_id)
     result = await db.execute(query)
-    key = result.scalars().all()
-    if not key:
-        key = await api_key_crud.create_key(db, user_id, name="默认密钥")
-    return key[0]
+    keys = result.scalars().all()
+    if not keys:
+        return await api_key_crud.create_key(db, user_id, name="默认密钥")
+    for k in keys:
+        if k.status:
+            return k
+    return keys[0]
 
 
 # 创建访客账号：随机用户名/密码（访客自己也不知道密码，所以无法拿它去登录），is_guest=True

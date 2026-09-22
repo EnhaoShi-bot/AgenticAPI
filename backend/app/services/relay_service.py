@@ -73,6 +73,17 @@ def compute_cost(model: dict, usage: dict) -> tuple[Decimal, int, int, int]:
     return cost.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP), prompt_tokens, completion_tokens, cache_tokens
 
 
+def _is_free_priced(model: dict) -> bool:
+    """全零定价模型：按次计费看单次价格，按量计费看三个单价，全为 0 视为免费调用"""
+    if model.get("is_request_mode"):
+        return not Decimal(str(model.get("per_request_price") or 0))
+    return not (
+            Decimal(str(model.get("input_price") or 0))
+            or Decimal(str(model.get("cache_price") or 0))
+            or Decimal(str(model.get("output_price") or 0))
+    )
+
+
 def _ordered_channels(model_name: str, channels: list[str]) -> list[str]:
     """按轮询游标确定本次调用的渠道尝试顺序（起点轮转，失败依次向后尝试）"""
     if not channels:
@@ -107,8 +118,9 @@ async def resolve_target(
         raise RelayError(403, f"当前用户分组（{user.user_group}）无权调用模型 {model_name}", "access_denied")
 
     # 余额校验（余额小于等于 0 时拒绝调用；实际扣费在调用成功后）
-    # 工坊调用免费，跳过此检查（访客余额为 0 也可使用）
-    if source != "studio" and user.balance <= 0:
+    # 两类调用跳过此检查：工坊调用（source=studio，访客余额为 0 也可使用）；
+    # 全零定价的免费模型——不产生任何扣费，不该被余额门槛挡住（否则访客连拨测免费模型都会 402）
+    if source != "studio" and user.balance <= 0 and not _is_free_priced(model):
         raise RelayError(402, "账户余额不足，请联系管理员充值", "insufficient_quota")
 
     channel_names = parse_json_list(model.get("channels"))
@@ -171,8 +183,9 @@ async def chat_completions(
     model, channel_names = await resolve_target(db, payload, user, source=source)
 
     # 模型映射：upstream_name 非空且与对外名不同时，发往上游的 model 用上游名，
-    # 响应里的 model 再还原为对外名；未配置时整条链路原样透传，零开销
-    upstream_name = model.get("upstream_name") or ""
+    # 响应里的 model 再还原为对外名；未配置时整条链路原样透传，零开销。
+    # strip 兜底：配置里误存纯空白时视为未配置，避免把 model 替换成空格发给上游
+    upstream_name = (model.get("upstream_name") or "").strip()
     model_name = model.get("name") or ""
     needs_mapping = bool(upstream_name) and upstream_name != model_name
 
