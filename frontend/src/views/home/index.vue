@@ -64,23 +64,8 @@
         </div>
         <div class="slide-visual">
           <div class="mock-card-grid">
-            <!-- 模型卡片：免费模型 -->
-            <div v-for="m in showFreeModels" :key="m.name" class="mock-model-card">
-              <div class="mock-model-head">
-                <LobeIcon :name="m.icon" :fallback="m.name" :size="25"/>
-                <span class="mock-model-name">{{ m.name }}</span>
-                <span class="mock-model-tag" :class="m.group === 'free' ? 'tag-free' : 'tag-vip'">
-                  {{ m.group === 'free' ? '免费' : 'VIP' }}
-                </span>
-              </div>
-              <div class="mock-model-price">
-                <span>输入 <b>¥{{ m.inputPrice }}</b></span>
-                <span>缓存 <b>¥{{ m.cachePrice }}</b></span>
-                <span>输出 <b>¥{{ m.outputPrice }}</b></span>
-              </div>
-            </div>
-            <!-- 模型卡片：付费模型 -->
-            <div v-for="m in showVipModels" :key="m.name" class="mock-model-card">
+            <!-- 展示卡固定 8 张（4 行 2 列）：置顶模型优先，不足 8 个再从其余启用的模型补齐 -->
+            <div v-for="m in showcaseModels" :key="m.name" class="mock-model-card">
               <div class="mock-model-head">
                 <LobeIcon :name="m.icon" :fallback="m.name" :size="25"/>
                 <span class="mock-model-name">{{ m.name }}</span>
@@ -346,8 +331,8 @@ const sections = [
   {label: '开发文档'},
 ]
 
-// ── 模型广场展示卡：有真实数据时只展示"启用的"前 4 个；
-//    仅当站点完全没有任何模型（全新部署）时才退回演示数据占位 ──
+// ── 模型广场展示卡：固定 8 张（4 行 2 列）；置顶模型优先，不足 8 个再从其余启用的模型补齐 ──
+// 仅当站点完全没有任何模型（全新部署）时才退回演示数据占位
 const demoModels = [
   {name: 'qwen-plus', icon: 'Qwen', group: 'free', inputPrice: '0.80', cachePrice: '0.00', outputPrice: '2.00'},
   {name: 'gpt-4o', icon: 'OpenAI', group: 'vip', inputPrice: '12.50', cachePrice: '0.00', outputPrice: '50.00'},
@@ -372,30 +357,14 @@ const monitorSeries = [
   }
 ]
 
-const showFreeModels = computed(() => {
-  const all = modelListStore.totalModelList
+const showcaseModels = computed(() => {
+  const all = modelListStore.totalModelList.filter(m => m.status)
   // 全新站点（无任何模型）才用演示数据占位，避免真实数据与演示卡片混排
-  if (all.length === 0) return demoModels.filter(m => m.group === 'free')
-  return all
-      .filter(m => m.modelGroup === 'free' && m.status)
-      .slice(0, 4)
-      .map(m => ({
-        name: m.name,
-        icon: m.icon || m.name,
-        group: m.modelGroup,
-        inputPrice: String(parseFloat(String(m.inputPrice)) || 0),
-        cachePrice: String(parseFloat(String(m.cachePrice)) || 0),
-        outputPrice: String(parseFloat(String(m.outputPrice)) || 0),
-      }))
-})
-
-
-const showVipModels = computed(() => {
-  const all = modelListStore.totalModelList
-  if (all.length === 0) return demoModels.filter(m => m.group === 'vip')
-  return all
-      .filter(m => m.modelGroup === 'vip' && m.status)
-      .slice(0, 4)
+  if (all.length === 0) return demoModels
+  // 置顶优先，其余按列表顺序补齐
+  const ordered = [...all.filter(m => m.isPin), ...all.filter(m => !m.isPin)]
+  return ordered
+      .slice(0, 8)
       .map(m => ({
         name: m.name,
         icon: m.icon || m.name,
