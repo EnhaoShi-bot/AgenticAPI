@@ -230,6 +230,14 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 2027
 > | 前端 | Vite 开发服务器 5173（`/api` 代理到 2027） | 仅部署 `npm run build` 产物 `dist`，nginx 托管并将 `/api` 反代到 2027 |
 > | 对外暴露 | 无（全部只监听本机回环） | nginx + HTTPS（80 强制跳转 443） |
 > | 数据 | 开发数据（本地库） | 生产数据（真实用户、密钥与计费） |
+>
+> **部署到云端（2026-09-22 起 Git 化）**：云端目录是 git 仓库（origin=GitHub），本地另配了 `prod` remote
+> （`sehwin:projects/AgenticAPI`）经 SSH 直推，服务器不依赖 GitHub 网络。日常部署在项目根目录运行
+> `deploy.bat`，一键完成：GitHub 备份推送 → 本地构建 → SSH 推送服务器代码 → 上传 `frontend/dist` →
+> 仅当 `requirements.txt` 变化时安装依赖 → 重启服务 → 轮询验证（站点 200 / API 401）。
+> 回滚：`ssh sehwin` 后 `cd ~/projects/AgenticAPI && git log` 找版本 → `git checkout <hash>` →
+> `sudo systemctl restart agenticapi`。注意：服务器工作区须保持干净，勿直接在服务器上改代码；
+> `backend/.env` 与 `backend/data/` 被 gitignore，独立于部署保留。
 
 > **已有旧数据库的升级说明**：启动时的自动建表只创建不存在的表，不会给已存在的表加列。若你的 `user`
 > 表是旧版本建的，需手动补齐缺失列（新装环境无需执行）：
