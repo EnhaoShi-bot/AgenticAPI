@@ -5,8 +5,8 @@
 - GET {base}/api/accounts/{id}/quota  → 实时限额（容器收到请求后经 VPN 向 Google 实时查询）
 鉴权：Authorization: Bearer {ANTIGRAVITY_API_KEY}，即管理界面的访问令牌（WEB_PASSWORD）。
 
-上游只提供「每个模型的剩余百分比 + 5 小时窗口重置时间」，没有周度/月度窗口，
-因此 usage 返回按已用比例降序的全量模型列表，由前端卡片挑重点展示。
+上游按模型返回「剩余百分比 + 5 小时窗口重置时间」，但文本模型的额度基本共享，
+因此只监控主力模型 MONITORED_MODEL，缺失时回落 recommended / 剩余最低的模型。
 实时拉取失败时回落到容器缓存数据（agSource=cache），避免 VPN 抖动把卡片直接打成错误。
 """
 
@@ -15,6 +15,9 @@ from typing import Any, List, Optional
 import httpx
 
 from app.services.upstream.base import http_error, network_error, ok, to_reset_at
+
+# 监控的主力文本模型（文本模型额度共享，盯一个即代表整体水位）
+MONITORED_MODEL = "gemini-3.8-flash"
 
 
 def _extract_models(quota: Any) -> List[dict]:
@@ -25,6 +28,15 @@ def _extract_models(quota: Any) -> List[dict]:
     if not isinstance(models, list):
         return []
     return [m for m in models if isinstance(m, dict)]
+
+
+def _pick_model(models: List[dict]) -> Optional[dict]:
+    """挑选监控的模型：优先主力模型，缺失时回落 recommended，最后取剩余最低的"""
+    for m in models:
+        if (m.get("name") or "") == MONITORED_MODEL:
+            return m
+    pool = [m for m in models if m.get("recommended")] or models
+    return min(pool, key=lambda m: m.get("percentage") or 0)
 
 
 def _reset_at(value: Any) -> Optional[str]:
@@ -82,25 +94,16 @@ def fetch_antigravity_usage(operation_dict: dict, live: bool = True) -> dict:
         if not models:
             return {"status": "code:200, msg:容器未返回配额数据", "usage": {}, "raw": None}
 
-        # 3) 剩余百分比 → 已用百分比，按已用降序（最紧张的模型排最前）
-        ag_models = sorted(
-            (
-                {
-                    "name": m.get("name") or "unknown",
-                    "used": max(0, 100 - int(m.get("percentage") or 0)),
-                    "resetAt": _reset_at(m.get("reset_time")),
-                }
-                for m in models
-            ),
-            key=lambda m: m["used"],
-            reverse=True,
-        )
+        model = _pick_model(models)
+        if model is None:
+            return {"status": "code:200, msg:容器未返回模型配额", "usage": {}, "raw": None}
 
         usage = {
             "agEmail": current.get("email") or "",
             "agSource": source,
-            "agTotalModels": len(ag_models),
-            "agModels": ag_models,
+            "agModel": model.get("name") or "unknown",
+            "agUsed": max(0, 100 - int(model.get("percentage") or 0)),
+            "agResetAt": _reset_at(model.get("reset_time")),
         }
         # raw 只保留 id/邮箱/配额做调试快照，避免把账号敏感字段落盘
         raw = {k: current.get(k) for k in ("id", "email", "quota") if k in current}

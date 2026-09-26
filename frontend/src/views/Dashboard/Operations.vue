@@ -142,16 +142,10 @@
         </a>
         <div v-if="agUsage.status !== 'ok'" class="error-text">{{ agUsage.status }}</div>
         <template v-else>
-          <div v-if="!agUsage.models.length" class="ag-empty">容器未返回模型配额</div>
-          <div v-else-if="agUsage.models[0]?.used === 0" class="ag-empty">
-            全部 {{ agUsage.totalModels }} 个模型 5 小时窗口额度充足
-          </div>
-          <div v-else class="plan-rows">
+          <div class="plan-rows">
             <plan-window-row
-              v-for="m in agUsage.models.slice(0, 6)"
-              :key="m.name"
-              :label="m.name"
-              :window="{ used: m.used, quota: 100, resetAt: m.resetAt }"
+              :label="'5小时 · ' + (agUsage.model || 'gemini-3.8-flash')"
+              :window="{ used: agUsage.used, quota: 100, resetAt: agUsage.resetAt }"
             />
           </div>
           <div class="plan-footnote">
@@ -368,8 +362,9 @@ const agUsage = reactive<antigravityUsageData>({
   status: "请刷新用量",
   email: "",
   source: 'cache',
-  totalModels: 0,
-  models: [],
+  model: "",
+  used: 0,
+  resetAt: null,
 })
 const agLoading = ref(false) // Antigravity 实时拉取中（经 VPN 现查 Google，约 15s）
 
@@ -530,12 +525,9 @@ const applyAgUsage = (u: any) => {
   agUsage.status = "ok"
   agUsage.email = u.agEmail ?? ""
   agUsage.source = u.agSource === 'live' ? 'live' : 'cache'
-  agUsage.totalModels = u.agTotalModels ?? 0
-  agUsage.models = (u.agModels ?? []).map((m: any) => ({
-    name: m.name,
-    used: m.used,
-    resetAt: m.resetAt ?? null,
-  }))
+  agUsage.model = u.agModel ?? ""
+  agUsage.used = u.agUsed ?? 0
+  agUsage.resetAt = u.agResetAt ?? null
 }
 
 const refreshAgUsage = () => {
@@ -717,13 +709,6 @@ onMounted(() => {
 .plan-card-zai2 { --plan-accent: var(--color-gold); }
 .plan-card-cc { --plan-accent: var(--color-vermilion); }
 .plan-card-ag { --plan-accent: var(--color-success); }
-
-/* Antigravity 卡的提示行（额度充足/无配额）与脚注（账号 · 数据源） */
-.ag-empty {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  padding: var(--space-4) 0;
-}
 
 .plan-footnote {
   margin-top: var(--space-3);
