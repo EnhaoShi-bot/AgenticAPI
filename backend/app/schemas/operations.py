@@ -13,6 +13,7 @@ class OperationsResponse(BaseModel):
     zai_usage: dict = {}
     zai2_usage: dict = {}
     cc_usage: dict = {}
+    antigravity_usage: dict = {}
 
 
 class MessageResponse(BaseModel):

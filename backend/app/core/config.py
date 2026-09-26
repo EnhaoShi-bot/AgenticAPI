@@ -106,8 +106,27 @@ class CommandCodeOpsSettings(BaseSettings):
     COMMANDCODE_API_KEY: str = ""
 
 
+class AntigravityOpsSettings(BaseSettings):
+    """Antigravity（Gemini PRO）限额监控专用配置
+
+    数据源是同机回环的 Antigravity-Manager 容器管理 API，密钥即管理界面访问令牌（长期有效）。
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=str(ENV_FILE_PATH),
+        env_file_encoding='utf-8',
+        extra='ignore', # 忽略 .env 中未定义的变量
+    )
+
+    # 容器管理 API 地址（同机部署用默认回环地址即可）
+    ANTIGRAVITY_BASE_URL: str = "http://127.0.0.1:8045"
+    # 管理界面的访问令牌（WEB_PASSWORD），以 Authorization: Bearer 头鉴权
+    ANTIGRAVITY_API_KEY: str = ""
+
+
 agent_setting = AgentSettings()
 setting = MysqlSettings()
 server_setting = ServerSettings()
 zai_ops_setting = ZaiOpsSettings()
 commandcode_ops_setting = CommandCodeOpsSettings()
+antigravity_ops_setting = AntigravityOpsSettings()

@@ -124,8 +124,42 @@
         </template>
       </div>
 
-      <!-- 预留卡位：第 2 行第 3 列，后续接入新渠道时替换 -->
-      <div class="plan-card plan-card-placeholder"></div>
+      <!-- Antigravity（Google Gemini PRO）：限额来自本机 Antigravity-Manager 容器的管理 API，
+           上游只给「每模型剩余百分比 + 5 小时窗口重置」，按已用比例降序挑重点展示 -->
+      <div class="plan-card plan-card-ag">
+        <div class="plan-card-head">
+          <div class="plan-card-title">
+            <span>Antigravity</span>
+            <a-tag size="small" color="green">Gemini PRO</a-tag>
+          </div>
+          <a-button type="text" size="small" :loading="agLoading" @click="refreshAgUsage">
+            <template #icon><icon-sync/></template>
+            刷新
+          </a-button>
+        </div>
+        <a class="plan-link" href="https://antigravity.google" target="_blank">
+          官方订阅链接<icon-launch/>
+        </a>
+        <div v-if="agUsage.status !== 'ok'" class="error-text">{{ agUsage.status }}</div>
+        <template v-else>
+          <div v-if="!agUsage.models.length" class="ag-empty">容器未返回模型配额</div>
+          <div v-else-if="agUsage.models[0]?.used === 0" class="ag-empty">
+            全部 {{ agUsage.totalModels }} 个模型 5 小时窗口额度充足
+          </div>
+          <div v-else class="plan-rows">
+            <plan-window-row
+              v-for="m in agUsage.models.slice(0, 6)"
+              :key="m.name"
+              :label="m.name"
+              :window="{ used: m.used, quota: 100, resetAt: m.resetAt }"
+            />
+          </div>
+          <div class="plan-footnote">
+            {{ agUsage.email }} ·
+            {{ agLoading ? '实时查询中…' : (agUsage.source === 'live' ? '数据源：实时' : '数据源：容器缓存') }}
+          </div>
+        </template>
+      </div>
 
     </div>
 
@@ -179,7 +213,8 @@ import type {
   stepfunUsageData,
   zaiUsageData,
   zai2UsageData,
-  commandcodeUsageData
+  commandcodeUsageData,
+  antigravityUsageData
 } from '@/types'
 
 /* ═══════════════════════ 用量卡片公共部分（5小时/周/月进度条） ═══════════════════════ */
@@ -329,6 +364,14 @@ const ccUsage = reactive<commandcodeUsageData>({
     quota: 0,
   },
 })
+const agUsage = reactive<antigravityUsageData>({
+  status: "请刷新用量",
+  email: "",
+  source: 'cache',
+  totalModels: 0,
+  models: [],
+})
+const agLoading = ref(false) // Antigravity 实时拉取中（经 VPN 现查 Google，约 15s）
 
 /* ═══════════════════════ 初始化 ═══════════════════════ */
 
@@ -482,6 +525,40 @@ const refreshCcUsage = () => {
   })
 }
 
+// 把后端返回的 Antigravity 用量写入卡片状态（单卡刷新与全部刷新共用）
+const applyAgUsage = (u: any) => {
+  agUsage.status = "ok"
+  agUsage.email = u.agEmail ?? ""
+  agUsage.source = u.agSource === 'live' ? 'live' : 'cache'
+  agUsage.totalModels = u.agTotalModels ?? 0
+  agUsage.models = (u.agModels ?? []).map((m: any) => ({
+    name: m.name,
+    used: m.used,
+    resetAt: m.resetAt ?? null,
+  }))
+}
+
+const refreshAgUsage = () => {
+  agLoading.value = true
+  getOperations('antigravity').then(res => {
+    if (res.data.status.antigravity === "200") {
+      applyAgUsage(res.data.antigravity_usage)
+    } else {
+      // 卡片已有数据时静默失败（实时拉取失败会回落缓存，不打断展示），否则显示错误
+      if (agUsage.status !== 'ok') {
+        agUsage.status = "数据刷新错误: " + res.data.status.antigravity
+      }
+    }
+  }).catch(err => {
+    console.error(err)
+    if (agUsage.status !== 'ok') {
+      agUsage.status = getErrorMessage(err, '数据刷新失败')
+    }
+  }).finally(() => {
+    agLoading.value = false
+  })
+}
+
 const refreshAllUsage = () => {
   loading.value = true
   getOperations('all').then(res => {
@@ -560,6 +637,12 @@ const refreshAllUsage = () => {
     } else {
       ccUsage.status = "数据刷新错误: " + res.data.status.cc
     }
+    // antigravity
+    if (res.data.status.antigravity === "200") {
+      applyAgUsage(res.data.antigravity_usage)
+    } else {
+      agUsage.status = "数据刷新错误: " + res.data.status.antigravity
+    }
   }).catch(err => {
     console.error(err)
     Message.error(getErrorMessage(err, '数据刷新失败'))
@@ -568,10 +651,11 @@ const refreshAllUsage = () => {
   })
 }
 
-// 页面刚加载的时候刷新全部数据
+// 页面刚加载的时候刷新全部数据；Antigravity 缓存秒回后再后台补一次实时拉取（约 15s）
 onMounted(() => {
   refreshAllUsage()
   loadSettings()
+  refreshAgUsage()
 })
 
 </script>
@@ -626,22 +710,26 @@ onMounted(() => {
   box-shadow: var(--shadow-md);
 }
 
-/* 各渠道强调色：火山主蓝 / 阶跃紫 / 智谱 v3 青 / 智谱 v2 金 / CommandCode 橘红 */
+/* 各渠道强调色：火山主蓝 / 阶跃紫 / 智谱 v3 青 / 智谱 v2 金 / CommandCode 橘红 / Antigravity 绿 */
 .plan-card-vol { --plan-accent: var(--color-primary); }
 .plan-card-step { --plan-accent: var(--color-violet); }
 .plan-card-zai { --plan-accent: var(--color-cyan); }
 .plan-card-zai2 { --plan-accent: var(--color-gold); }
 .plan-card-cc { --plan-accent: var(--color-vermilion); }
+.plan-card-ag { --plan-accent: var(--color-success); }
 
-/* 预留卡位：虚线框占位，补足网格空缺（无数据、无交互） */
-.plan-card-placeholder {
-  border: 1px dashed var(--color-gray-300);
-  background-color: var(--color-gray-50);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
+/* Antigravity 卡的提示行（额度充足/无配额）与脚注（账号 · 数据源） */
+.ag-empty {
   font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  padding: var(--space-4) 0;
+}
+
+.plan-footnote {
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .plan-card-head {

@@ -2,8 +2,13 @@
 
 import json
 
-from app.core.config import DATA_DIR, commandcode_ops_setting, zai_ops_setting
-from app.services.upstream import commandcode, stepfun, volcengine, zai
+from app.core.config import (
+    DATA_DIR,
+    antigravity_ops_setting,
+    commandcode_ops_setting,
+    zai_ops_setting,
+)
+from app.services.upstream import antigravity, commandcode, stepfun, volcengine, zai
 from app.utils.token_utils import get_token_expiry
 
 OPS_JSON_PATH = DATA_DIR / "operations_config.json"
@@ -26,7 +31,7 @@ def _save_raw(name: str, data) -> None:
 def get_operations(refresh_channel: str = "all") -> dict:
     """
     获取上游运维数据
-    :param refresh_channel: 刷新的渠道，可选值为 "vol"、"stepfun"、"zai"、"zai2" 或 "all"
+    :param refresh_channel: 刷新的渠道，可选值为 "vol"、"stepfun"、"zai"、"zai2"、"cc"、"antigravity" 或 "all"
     """
     re_dict = {
         "status": {},
@@ -36,6 +41,7 @@ def get_operations(refresh_channel: str = "all") -> dict:
         "zai_usage": {},
         "zai2_usage": {},
         "cc_usage": {},
+        "antigravity_usage": {},
     }
 
     operation_dict = _load_ops_config()
@@ -46,6 +52,10 @@ def get_operations(refresh_channel: str = "all") -> dict:
 
     # CommandCode 的 API key 同样在 .env（长期有效）
     operation_dict["commandcode_api_key"] = commandcode_ops_setting.COMMANDCODE_API_KEY
+
+    # Antigravity 的凭证同样在 .env（管理界面访问令牌，长期有效）
+    operation_dict["antigravity_base_url"] = antigravity_ops_setting.ANTIGRAVITY_BASE_URL
+    operation_dict["antigravity_api_key"] = antigravity_ops_setting.ANTIGRAVITY_API_KEY
 
     # 【1】火山方舟 Token Plan 用量
     if refresh_channel in ("vol", "all"):
@@ -88,6 +98,18 @@ def get_operations(refresh_channel: str = "all") -> dict:
         re_dict["cc_usage"] = result["usage"]
         if result["raw"] is not None:
             _save_raw("cc", result["raw"])
+
+    # 【6】Antigravity（Gemini PRO）限额（数据源为本机 Antigravity-Manager 容器的管理 API）。
+    # 实时限额需容器经 VPN 向 Google 现查（实测约 15s），只在单卡刷新时实时拉取；
+    # "all"/页面加载读容器缓存秒回，前端挂载后会自动补一次实时刷新。
+    if refresh_channel in ("antigravity", "all"):
+        result = antigravity.fetch_antigravity_usage(
+            operation_dict, live=(refresh_channel == "antigravity")
+        )
+        re_dict["status"]["antigravity"] = result["status"]
+        re_dict["antigravity_usage"] = result["usage"]
+        if result["raw"] is not None:
+            _save_raw("antigravity", result["raw"])
 
     # 获取 token 过期时间
     re_dict["token_expiry"] = get_token_expiry(operation_dict)

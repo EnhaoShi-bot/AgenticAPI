@@ -8,6 +8,7 @@ export type {
     zaiUsageData,
     zai2UsageData,
     commandcodeUsageData,
+    antigravityUsageData,
     cookieSettings,
 } from './operations'
 export type {

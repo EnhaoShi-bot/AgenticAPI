@@ -19,7 +19,7 @@ router = APIRouter(prefix="/operations", tags=["Operations"])
 def get_operations(refresh_channel: str = "all", _admin=Depends(get_current_admin)):
     """
     获取上游运维数据（需管理员）
-    :param refresh_channel: 刷新的渠道，可选值为 "vol"、"stepfun"、"zai"、"zai2" 或 "all"
+    :param refresh_channel: 刷新的渠道，可选值为 "vol"、"stepfun"、"zai"、"zai2"、"cc"、"antigravity" 或 "all"
     """
     data = operations_service.get_operations(refresh_channel)
     return success_response(message="获取运维数据成功", data=data)
