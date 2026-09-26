@@ -16,8 +16,16 @@ import httpx
 
 from app.services.upstream.base import http_error, network_error, ok, to_reset_at
 
-# 监控的主力文本模型（文本模型额度共享，盯一个即代表整体水位）
+# 监控的主力文本模型（文本模型额度共享，盯一个即代表整体水位）。
+# 上游配额列表里没有裸名 gemini-3.8-flash，实际条目是 -tiered/-high/-medium/-low 变体，
+# 故按下面的回退顺序取族内条目。
 MONITORED_MODEL = "gemini-3.8-flash"
+MONITORED_FALLBACKS = (
+    "gemini-3.8-flash-tiered",
+    "gemini-3.8-flash-high",
+    "gemini-3.8-flash-medium",
+    "gemini-3.8-flash-low",
+)
 
 
 def _extract_models(quota: Any) -> List[dict]:
@@ -31,9 +39,13 @@ def _extract_models(quota: Any) -> List[dict]:
 
 
 def _pick_model(models: List[dict]) -> Optional[dict]:
-    """挑选监控的模型：优先主力模型，缺失时回落 recommended，最后取剩余最低的"""
+    """挑选监控的模型：主力模型族 → 前缀匹配 → recommended → 剩余最低"""
+    by_name = {(m.get("name") or ""): m for m in models}
+    for candidate in (MONITORED_MODEL, *MONITORED_FALLBACKS):
+        if candidate in by_name:
+            return by_name[candidate]
     for m in models:
-        if (m.get("name") or "") == MONITORED_MODEL:
+        if (m.get("name") or "").startswith(MONITORED_MODEL):
             return m
     pool = [m for m in models if m.get("recommended")] or models
     return min(pool, key=lambda m: m.get("percentage") or 0)
