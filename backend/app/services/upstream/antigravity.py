@@ -1,54 +1,43 @@
 """Antigravity（Google Gemini PRO）上游限额适配
 
 数据源是同机回环的 Antigravity-Manager 容器管理 API（headless 模式，端口 8045）：
-- GET {base}/api/accounts/current     → 当前账号（id/邮箱 + 容器缓存的各模型配额）
+- GET {base}/api/accounts/current     → 当前账号（id/邮箱 + 容器缓存的配额）
 - GET {base}/api/accounts/{id}/quota  → 实时限额（容器收到请求后经 VPN 向 Google 实时查询）
 鉴权：Authorization: Bearer {ANTIGRAVITY_API_KEY}，即管理界面的访问令牌（WEB_PASSWORD）。
 
-上游按模型返回「剩余百分比 + 5 小时窗口重置时间」，但文本模型的额度基本共享，
-因此只监控主力模型 MONITORED_MODEL，缺失时回落 recommended / 剩余最低的模型。
+配额以模型组（quota_groups，来自 Google retrieveUserQuotaSummary）为单位返回，
+每组含 5 小时与周度两个窗口桶，剩余量为 0~1 的 remaining_fraction；组内模型额度共享，
+因此取 Gemini 组的两个窗口展示，已用量 = (1 - remaining_fraction) * 100。
 实时拉取失败时回落到容器缓存数据（agSource=cache），避免 VPN 抖动把卡片直接打成错误。
 """
 
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 import httpx
 
 from app.services.upstream.base import http_error, network_error, ok, to_reset_at
 
-# 监控的主力文本模型（文本模型额度共享，盯一个即代表整体水位）。
-# 上游配额列表里没有裸名 gemini-3.8-flash，实际条目是 -tiered/-high/-medium/-low 变体，
-# 故按下面的回退顺序取族内条目。
-MONITORED_MODEL = "gemini-3.8-flash"
-MONITORED_FALLBACKS = (
-    "gemini-3.8-flash-tiered",
-    "gemini-3.8-flash-high",
-    "gemini-3.8-flash-medium",
-    "gemini-3.8-flash-low",
-)
+
+def _pick_group(quota_groups: Any) -> Optional[dict]:
+    """取 Gemini 模型组的分组配额（display_name 以 Gemini 开头），缺失时取第一组"""
+    if not isinstance(quota_groups, list):
+        return None
+    groups = [g for g in quota_groups if isinstance(g, dict)]
+    for g in groups:
+        if str(g.get("display_name") or "").lower().startswith("gemini"):
+            return g
+    return groups[0] if groups else None
 
 
-def _extract_models(quota: Any) -> List[dict]:
-    """从配额结构里取 models 数组，容忍缺失/结构变化"""
-    if not isinstance(quota, dict):
-        return []
-    models = quota.get("models")
-    if not isinstance(models, list):
-        return []
-    return [m for m in models if isinstance(m, dict)]
-
-
-def _pick_model(models: List[dict]) -> Optional[dict]:
-    """挑选监控的模型：主力模型族 → 前缀匹配 → recommended → 剩余最低"""
-    by_name = {(m.get("name") or ""): m for m in models}
-    for candidate in (MONITORED_MODEL, *MONITORED_FALLBACKS):
-        if candidate in by_name:
-            return by_name[candidate]
-    for m in models:
-        if (m.get("name") or "").startswith(MONITORED_MODEL):
-            return m
-    pool = [m for m in models if m.get("recommended")] or models
-    return min(pool, key=lambda m: m.get("percentage") or 0)
+def _pick_bucket(group: dict, window: str) -> Optional[dict]:
+    """从模型组里取指定窗口的配额桶（window: "5h" / "weekly"）"""
+    buckets = group.get("buckets")
+    if not isinstance(buckets, list):
+        return None
+    for b in buckets:
+        if isinstance(b, dict) and b.get("window") == window:
+            return b
+    return None
 
 
 def _reset_at(value: Any) -> Optional[str]:
@@ -58,8 +47,18 @@ def _reset_at(value: Any) -> Optional[str]:
     return to_reset_at(value)
 
 
+def _window_fields(bucket: Optional[dict]) -> dict:
+    """配额桶 → 其他卡片同款的 Used/Total/ResetAt 三件套；桶缺失时 Total=0，
+    前端据此显示「无对应窗口限额」"""
+    if not bucket:
+        return {"Used": 0, "Total": 0, "ResetAt": None}
+    remaining = bucket.get("remaining_fraction")
+    used = round(max(0.0, min(1.0, 1.0 - remaining)) * 100, 2) if isinstance(remaining, (int, float)) else 0
+    return {"Used": used, "Total": 100, "ResetAt": _reset_at(bucket.get("reset_time"))}
+
+
 def fetch_antigravity_usage(operation_dict: dict, live: bool = True) -> dict:
-    """获取 Antigravity 当前账号的各模型限额
+    """获取 Antigravity Gemini 组的 5 小时 / 周度限额
 
     :param live: True 时先实时拉取（容器经 VPN 向 Google 现查，实测约 15s，超时 25s 给
         前端 30s 的 axios 预算留余量），失败回落缓存；False 直接读容器缓存秒回。
@@ -86,7 +85,7 @@ def fetch_antigravity_usage(operation_dict: dict, live: bool = True) -> dict:
 
         # 2) 实时限额（live=False 跳过，直接用缓存）
         source = "cache"
-        models = _extract_models(current.get("quota"))
+        quota = current.get("quota")
         if live:
             try:
                 resp = httpx.get(
@@ -94,28 +93,34 @@ def fetch_antigravity_usage(operation_dict: dict, live: bool = True) -> dict:
                 )
                 if resp.status_code == 200:
                     try:
-                        live_models = _extract_models(resp.json())
+                        live_quota = resp.json()
                     except ValueError:
-                        live_models = []
-                    if live_models:
-                        models = live_models
+                        live_quota = None
+                    if isinstance(live_quota, dict) and live_quota.get("quota_groups"):
+                        quota = live_quota
                         source = "live"
             except httpx.HTTPError:
                 pass  # 实时拉取失败 → 沿用缓存，不打断卡片
 
-        if not models:
-            return {"status": "code:200, msg:容器未返回配额数据", "usage": {}, "raw": None}
+        group = _pick_group(quota.get("quota_groups") if isinstance(quota, dict) else None)
+        if group is None:
+            return {"status": "code:200, msg:容器未返回分组配额", "usage": {}, "raw": None}
 
-        model = _pick_model(models)
-        if model is None:
-            return {"status": "code:200, msg:容器未返回模型配额", "usage": {}, "raw": None}
+        five = _window_fields(_pick_bucket(group, "5h"))
+        weekly = _window_fields(_pick_bucket(group, "weekly"))
 
         usage = {
             "agEmail": current.get("email") or "",
             "agSource": source,
-            "agModel": model.get("name") or "unknown",
-            "agUsed": max(0, 100 - int(model.get("percentage") or 0)),
-            "agResetAt": _reset_at(model.get("reset_time")),
+            "agFiveHourUsed": five["Used"],
+            "agFiveHourTotal": five["Total"],
+            "agFiveHourResetAt": five["ResetAt"],
+            "agWeeklyUsed": weekly["Used"],
+            "agWeeklyTotal": weekly["Total"],
+            "agWeeklyResetAt": weekly["ResetAt"],
+            "agMonthlyUsed": 0,
+            "agMonthlyTotal": 0,  # 上游无月度窗口，前端显示「无月度限额」
+            "agMonthlyResetAt": None,
         }
         # raw 只保留 id/邮箱/配额做调试快照，避免把账号敏感字段落盘
         raw = {k: current.get(k) for k in ("id", "email", "quota") if k in current}

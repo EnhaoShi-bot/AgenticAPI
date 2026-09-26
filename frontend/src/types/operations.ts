@@ -43,16 +43,13 @@ export interface commandcodeUsageData {
     monthly: usageWindow
 }
 
-// Antigravity（Google Gemini PRO）的限额数据：上游为「每模型剩余百分比 + 5 小时窗口重置」，
-// 文本模型额度共享，后端只取主力模型 gemini-3.8-flash（上游缺失该模型时回落 recommended / 剩余最低，
-// model 字段回显实际采用的模型名）
+// Antigravity（Google Gemini PRO）的限额数据：配额以模型组为单位（组内文本模型额度共享），
+// 后端取 Gemini 组的 5 小时 + 周度两个窗口（quota_groups 的 remaining_fraction 换算已用百分比），无月度限额
 export interface antigravityUsageData {
     status: string;
-    email: string
-    source: 'live' | 'cache'   // live=实时拉取（容器经 VPN 查 Google），cache=容器缓存回落
-    model: string
-    used: number
-    resetAt?: string | null
+    fiveHour: usageWindow
+    weekly: usageWindow
+    monthly: usageWindow
 }
 
 // 数据接口定义，向后端发送cookie等信息

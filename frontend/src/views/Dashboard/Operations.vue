@@ -125,7 +125,7 @@
       </div>
 
       <!-- Antigravity（Google Gemini PRO）：限额来自本机 Antigravity-Manager 容器的管理 API，
-           上游只给「每模型剩余百分比 + 5 小时窗口重置」，按已用比例降序挑重点展示 -->
+           取 Gemini 模型组的 5 小时 + 周度窗口，与其他卡同一展示语言 -->
       <div class="plan-card plan-card-ag">
         <div class="plan-card-head">
           <div class="plan-card-title">
@@ -142,16 +142,7 @@
         </a>
         <div v-if="agUsage.status !== 'ok'" class="error-text">{{ agUsage.status }}</div>
         <template v-else>
-          <div class="plan-rows">
-            <plan-window-row
-              :label="'5小时 · ' + (agUsage.model || 'gemini-3.8-flash')"
-              :window="{ used: agUsage.used, quota: 100, resetAt: agUsage.resetAt }"
-            />
-          </div>
-          <div class="plan-footnote">
-            {{ agUsage.email }} ·
-            {{ agLoading ? '实时查询中…' : (agUsage.source === 'live' ? '数据源：实时' : '数据源：容器缓存') }}
-          </div>
+          <plan-usage :usage="agUsage"/>
         </template>
       </div>
 
@@ -360,11 +351,18 @@ const ccUsage = reactive<commandcodeUsageData>({
 })
 const agUsage = reactive<antigravityUsageData>({
   status: "请刷新用量",
-  email: "",
-  source: 'cache',
-  model: "",
-  used: 0,
-  resetAt: null,
+  fiveHour: {
+    used: 0,
+    quota: 0,
+  },
+  weekly: {
+    used: 0,
+    quota: 0,
+  },
+  monthly: {
+    used: 0,
+    quota: 0,
+  },
 })
 const agLoading = ref(false) // Antigravity 实时拉取中（经 VPN 现查 Google，约 15s）
 
@@ -523,11 +521,15 @@ const refreshCcUsage = () => {
 // 把后端返回的 Antigravity 用量写入卡片状态（单卡刷新与全部刷新共用）
 const applyAgUsage = (u: any) => {
   agUsage.status = "ok"
-  agUsage.email = u.agEmail ?? ""
-  agUsage.source = u.agSource === 'live' ? 'live' : 'cache'
-  agUsage.model = u.agModel ?? ""
-  agUsage.used = u.agUsed ?? 0
-  agUsage.resetAt = u.agResetAt ?? null
+  agUsage.fiveHour.used = u.agFiveHourUsed ?? 0
+  agUsage.fiveHour.quota = u.agFiveHourTotal ?? 0
+  agUsage.fiveHour.resetAt = u.agFiveHourResetAt ?? null
+  agUsage.weekly.used = u.agWeeklyUsed ?? 0
+  agUsage.weekly.quota = u.agWeeklyTotal ?? 0
+  agUsage.weekly.resetAt = u.agWeeklyResetAt ?? null
+  agUsage.monthly.used = u.agMonthlyUsed ?? 0
+  agUsage.monthly.quota = u.agMonthlyTotal ?? 0
+  agUsage.monthly.resetAt = u.agMonthlyResetAt ?? null
 }
 
 const refreshAgUsage = () => {
@@ -709,13 +711,6 @@ onMounted(() => {
 .plan-card-zai2 { --plan-accent: var(--color-gold); }
 .plan-card-cc { --plan-accent: var(--color-vermilion); }
 .plan-card-ag { --plan-accent: var(--color-success); }
-
-.plan-footnote {
-  margin-top: var(--space-3);
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  font-variant-numeric: tabular-nums;
-}
 
 .plan-card-head {
   display: flex;
